@@ -6,12 +6,14 @@ public class Account {
 	private final String email;
 	private final String phone;
 	private String password;
+	private AccountType type;
 
-	public Account(final String name, final String email, final String phone, final String password) {
+	public Account(final String name, final String email, final String phone, final String password, AccountType type) {
 		this.name = name;
 		this.email = email;
 		this.phone = phone;
 		this.password = password;
+		this.type = type;
 	}
 
 	public String getName() {
@@ -21,7 +23,8 @@ public class Account {
 	public String getEmail() {
 		return email;
 	}
-		public String getPhone() {
+	
+	public String getPhone() {
 		return phone;
 	}
 
@@ -31,6 +34,10 @@ public class Account {
 
 	public void setPassword(final String password) {
 		this.password = password;
+	}
+	
+	public AccountType getType() {
+		return type;
 	}
 	
 	public String toString() {
