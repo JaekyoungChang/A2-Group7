@@ -114,12 +114,23 @@ public class AccountManager {
 		}
 		LOGGER.info(String.format("Updated account %s", account));
 	}
+	
+	private boolean validateEmail(final String email) {
+		for (final Account account : accounts) {
+			if (email.equals(account.getEmail())) {
+				LOGGER.info("Invalid email! Email address already in use."));
+				return false;
+			}
+		}
+
+		return true;
+	}
 
 	private boolean validatePassword(final String password) {
 
 		// check password length
-		if (password.length() > 20) {
-			LOGGER.info("Invalid password! Maxmimum password length is 20 characters.");
+		if (password.length() < 20) {
+			LOGGER.info("Invalid password! Minimum password length is 20 characters.");
 			return false;
 		}
 
@@ -209,8 +220,14 @@ public class AccountManager {
 
 		System.out.print("Enter Name: ");
 		final String name = scanner.next();
+
 		System.out.print("Enter Email: ");
 		final String email = scanner.next();
+		while (validateEmail(email) == false) {
+			System.out.print("Enter Email:");
+			email = scanner.next();
+		}
+
 		System.out.print("Enter Phone: ");
 		final String phone = scanner.next();
 
@@ -221,7 +238,7 @@ public class AccountManager {
 			password = scanner.next();
 		}
 
-		addAccount(new Account(name, email, phone, password));
+		addAccount(new Account(name, email, phone, password, AccountType.STAFF));
 
 		System.out.println("Account created.");
 	}
