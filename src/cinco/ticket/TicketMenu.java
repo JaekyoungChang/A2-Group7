@@ -2,9 +2,13 @@ package cinco.ticket;
 
 import java.util.Scanner;
 
-import cinco.ticket.Main.MenuOption;
-
 public class TicketMenu {
+
+	private final AccountManager accountManager;
+
+	public TicketMenu() {
+		accountManager = AccountManager.getAccountManager();
+	}
 
 	public MenuOption displayMenu(final Scanner scanner) {
 
@@ -12,7 +16,9 @@ public class TicketMenu {
 
 		System.out.println("*** TICKET MENU ***");
 
-		System.out.println("Select from the following options:");
+		final String username = accountManager.getActiveAccount() == null ? "Nobody"
+				: accountManager.getActiveAccount().getName();
+		System.out.println(String.format("Welcome %s, Select from the following options:", username));
 		System.out.println("1. Example");
 		System.out.println("2. Logout");
 		System.out.println("3. Exit");

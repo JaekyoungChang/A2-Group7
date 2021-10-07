@@ -13,14 +13,28 @@ import java.util.stream.Stream;
 
 public class AccountManager {
 
+	private static AccountManager accountManager = null;
+
+	public static AccountManager getAccountManager() {
+		if (accountManager == null) {
+			accountManager = new AccountManager();
+		}
+
+		return accountManager;
+	}
+
 	private static final Logger LOGGER = Logger.getLogger(AccountManager.class.getName());
 	private static final String ACCOUNTS_FILE_PATH = "accounts.csv";
 
 	private final ArrayList<Account> accounts;
 
+	private Account activeAccount;
+
 	public AccountManager() {
 		this.accounts = new ArrayList<Account>();
 		loadAccounts();
+
+		this.activeAccount = null;
 	}
 
 	private void loadAccounts() {
@@ -28,15 +42,16 @@ public class AccountManager {
 			// check if accounts file exists
 			if (Files.notExists(Paths.get(ACCOUNTS_FILE_PATH))) {
 				// create accounts file
-				Files.write(Paths.get(ACCOUNTS_FILE_PATH), "NAME,EMAIL,PHONE,PASSWORD\n".getBytes(),
+				Files.write(Paths.get(ACCOUNTS_FILE_PATH), "TYPE,NAME,EMAIL,PHONE,PASSWORD\n".getBytes(),
 						StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 				LOGGER.info("Created accounts file");
 			} else {
 				// load accounts from accounts file
-				try (final Stream<String> stream = Files.lines(Paths.get(ACCOUNTS_FILE_PATH))) {
+				try (final Stream<String> stream = Files.lines(Paths.get(ACCOUNTS_FILE_PATH)).skip(1)) {
 					stream.forEach(line -> {
 						final String[] fields = line.split(",");
-						final Account account = new Account(fields[0], fields[1], fields[2], fields[3]);
+						final Account account = new Account(AccountType.valueOf(fields[0]), fields[1], fields[2],
+								fields[3], fields[4]);
 						accounts.add(account);
 					});
 				}
@@ -44,6 +59,18 @@ public class AccountManager {
 			}
 		} catch (final IOException e) {
 			e.printStackTrace();
+		}
+	}
+
+	private AccountType getAccountType(final String role) {
+		try {
+			final int index = Integer.valueOf(role) - 1;
+			final AccountType type = AccountType.values()[index];
+			LOGGER.info(String.format("Found account type for %s", role));
+			return type;
+		} catch (final NumberFormatException | IndexOutOfBoundsException e) {
+			LOGGER.info(String.format("Unable to find account type for %s", role));
+			return null;
 		}
 	}
 
@@ -70,8 +97,8 @@ public class AccountManager {
 		accounts.add(account);
 
 		// write account to accounts file
-		final String accountString = String.format("%s,%s,%s,%s\n", account.getName(), account.getEmail(),
-				account.getPhone(), account.getPassword());
+		final String accountString = String.format("%s,%s,%s,%s,%s\n", account.getType(), account.getName(),
+				account.getEmail(), account.getPhone(), account.getPassword());
 		try {
 			Files.write(Paths.get(ACCOUNTS_FILE_PATH), accountString.getBytes(), StandardOpenOption.APPEND);
 			LOGGER.info(String.format("Added account %s to accounts file", account));
@@ -88,10 +115,10 @@ public class AccountManager {
 			LOGGER.info("Cannot update account");
 			return;
 		}
-		
+
 		// update account in memory
-		for (final Account inMemoryAccount : accounts ) {
-			if (account.getName().equals(inMemoryAccount.getName())) {				
+		for (final Account inMemoryAccount : accounts) {
+			if (account.getName().equals(inMemoryAccount.getName())) {
 				accounts.remove(inMemoryAccount);
 				accounts.add(account);
 			}
@@ -104,7 +131,8 @@ public class AccountManager {
 			try (final Stream<String> stream = Files.lines(Paths.get(ACCOUNTS_FILE_PATH))) {
 				final List<String> updatedAccounts = stream.map(line -> {
 					final String[] fields = line.split(",");
-					final Account storedAccount = new Account(fields[0], fields[1], fields[2], fields[3]);
+					final Account storedAccount = new Account(AccountType.valueOf(fields[0]), fields[1], fields[2],
+							fields[3], fields[4]);
 					return storedAccount.getName().equals(account.getName()) ? accountString : line;
 				}).collect(Collectors.toList());
 				Files.write(Paths.get(ACCOUNTS_FILE_PATH), updatedAccounts);
@@ -114,13 +142,53 @@ public class AccountManager {
 		}
 		LOGGER.info(String.format("Updated account %s", account));
 	}
-	
+
+	private boolean validateRole(final String role) {
+
+		// check role is not empty
+		if (role.isEmpty()) {
+			LOGGER.warning("Invalid type! Must not be empty.");
+			return false;
+		}
+
+		// check role is valid
+		if (getAccountType(role) == null) {
+			LOGGER.warning("Invalid type! Unrecognised.");
+			return false;
+		}
+
+		return true;
+	}
+
+	private boolean validateName(final String name) {
+
+		// check name is not empty
+		if (name.isEmpty()) {
+			LOGGER.warning("Invalid name! Must not be empty.");
+			return false;
+		}
+
+		// check name is unique
+		if (getAccount(name) != null) {
+			LOGGER.warning("Invalid name! Already in use.");
+			return false;
+		}
+
+		return true;
+	}
+
 	private boolean validateEmail(final String email) {
-		
-		// check if email address is unique
+
+		// check email is not empty
+		if (email.isEmpty()) {
+			LOGGER.warning("Invalid email address! Must not be empty.");
+			return false;
+		}
+
+		// check email address is unique
 		for (final Account account : accounts) {
 			if (email.equals(account.getEmail())) {
-				LOGGER.info("Invalid email! Email address already in use."));
+				LOGGER.warning("Invalid email address! Already in use.");
 				return false;
 			}
 		}
@@ -128,11 +196,24 @@ public class AccountManager {
 		return true;
 	}
 
+	private boolean validatePhone(final String phone) {
+
+		// check phone number is not empty
+		if (phone.isEmpty()) {
+			LOGGER.warning("Invalid phone number! Must not be empty.");
+			return false;
+		}
+
+		// TODO: more tests
+
+		return true;
+	}
+
 	private boolean validatePassword(final String password) {
 
 		// check password length
-		if (password.length() < 20) {
-			LOGGER.info("Invalid password! Minimum password length is 20 characters.");
+		if (password.length() < 6) {
+			LOGGER.warning("Invalid password! Minimum password length is 6 characters.");
 			return false;
 		}
 
@@ -151,11 +232,19 @@ public class AccountManager {
 			}
 		}
 		if (!containsLowercase || !containsUppercase || !containsNumber) {
-			LOGGER.info("Invalid password! Password must contain a number, uppercase and lowercase letter.");
+			LOGGER.warning("Invalid password! Password must contain a number, uppercase and lowercase letter.");
 			return false;
 		}
-		
+
 		return true;
+	}
+
+	public Account getActiveAccount() {
+		return activeAccount;
+	}
+
+	public void setActiveAccount(final Account account) {
+		this.activeAccount = account;
 	}
 
 	public boolean login(final Scanner scanner) {
@@ -167,7 +256,7 @@ public class AccountManager {
 		System.out.print("Enter Name: ");
 		String name = scanner.next();
 		while (getAccount(name) == null) {
-			System.out.println("Invalid name! No account exists!");
+			LOGGER.warning("Unrecognised account, try again...");
 			System.out.print("Enter Name:");
 			name = scanner.next();
 		}
@@ -176,10 +265,13 @@ public class AccountManager {
 		System.out.print("Enter Password: ");
 		String password = scanner.next();
 		while (!password.equals(account.getPassword())) {
-			System.out.println("Invalid password! try again...");
+			LOGGER.warning("Invalid password! try again...");
 			System.out.print("Enter Password:");
 			password = scanner.next();
 		}
+
+		System.out.print(account);
+		setActiveAccount(account);
 
 		System.out.println("Login successful.");
 
@@ -194,8 +286,7 @@ public class AccountManager {
 
 		System.out.print("Enter Name: ");
 		String name = scanner.next();
-		while (getAccount(name) == null) {
-			System.out.println("Invalid name! No account exists!");
+		while (!validateName(name)) {
 			System.out.print("Enter Name:");
 			name = scanner.next();
 		}
@@ -204,7 +295,7 @@ public class AccountManager {
 		System.out.print("Enter New Password: ");
 		String password = scanner.next();
 		while (!validatePassword(password)) {
-			System.out.print("Enter Password:");
+			System.out.print("Enter New Password:");
 			password = scanner.next();
 		}
 		account.setPassword(password);
@@ -220,27 +311,46 @@ public class AccountManager {
 
 		System.out.println("*** CREATE ACCOUNT ***");
 
+		System.out.println("Choose a role:");
+		System.out.println("1. Staff");
+		System.out.println("2. Technician");
+		System.out.println();
+		System.out.print("Enter Choice: ");
+		String role = scanner.next();
+		while (!validateRole(role)) {
+			System.out.print("Enter Choice:");
+			role = scanner.next();
+		}
+
 		System.out.print("Enter Name: ");
-		final String name = scanner.next();
+		String name = scanner.next();
+		while (!validateName(name)) {
+			System.out.print("Enter Name:");
+			name = scanner.next();
+		}
 
 		System.out.print("Enter Email: ");
-		final String email = scanner.next();
-		while (validateEmail(email) == false) {
+		String email = scanner.next();
+		while (!validateEmail(email)) {
 			System.out.print("Enter Email:");
 			email = scanner.next();
 		}
 
 		System.out.print("Enter Phone: ");
-		final String phone = scanner.next();
+		String phone = scanner.next();
+		while (!validatePhone(phone)) {
+			System.out.print("Enter Phone:");
+			phone = scanner.next();
+		}
 
 		System.out.print("Enter Password: ");
 		String password = scanner.next();
-		while (validatePassword(password) == false) {
+		while (!validatePassword(password)) {
 			System.out.print("Enter Password:");
 			password = scanner.next();
 		}
 
-		addAccount(new Account(name, email, phone, password, AccountType.STAFF));
+		addAccount(new Account(getAccountType(role), name, email, phone, password));
 
 		System.out.println("Account created.");
 	}

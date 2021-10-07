@@ -2,18 +2,16 @@ package cinco.ticket;
 
 import java.util.Scanner;
 
-import cinco.ticket.Main.MenuOption;
-
 public class LoginMenu {
 
-	private final AccountManager accounts;
+	private final AccountManager accountManager;
 
 	public LoginMenu() {
-		accounts = new AccountManager();
+		accountManager = AccountManager.getAccountManager();
 	}
 
 	public MenuOption displayMenu(final Scanner scanner) {
-		
+
 		scanner.useDelimiter(System.lineSeparator());
 
 		System.out.println("*** LOGIN MENU ***");
@@ -30,15 +28,15 @@ public class LoginMenu {
 
 		switch (choice) {
 		case "1":
-			if (accounts.login(scanner)) {
+			if (accountManager.login(scanner)) {
 				return MenuOption.TICKET;
 			}
 			break;
 		case "2":
-			accounts.resetPassword(scanner);
+			accountManager.resetPassword(scanner);
 			break;
 		case "3":
-			accounts.createAccount(scanner);
+			accountManager.createAccount(scanner);
 			break;
 		case "4":
 			System.out.println("Exiting program...");

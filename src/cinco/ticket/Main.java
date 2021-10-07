@@ -8,9 +8,9 @@ import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 public class Main {
-	
+
 	private static final Level LOG_LEVEL = Level.WARNING;
-	static {		
+	static {
 		final LogManager logManager = LogManager.getLogManager();
 		synchronized (logManager) {
 			final Enumeration<String> loggerNames = logManager.getLoggerNames();
@@ -18,20 +18,16 @@ public class Main {
 				final Logger logger = logManager.getLogger(loggerNames.nextElement());
 				if (logger != null) {
 					logger.setLevel(LOG_LEVEL);
-					for(final Handler handler : logger.getHandlers()) {
+					for (final Handler handler : logger.getHandlers()) {
 						handler.setLevel(LOG_LEVEL);
 					}
 				}
 			}
 		}
 	}
-	
+
 	private static final LoginMenu LOGIN_MENU = new LoginMenu();
 	private static final TicketMenu TICKET_MENU = new TicketMenu();
-
-	public enum MenuOption {
-		LOGIN, TICKET
-	}
 
 	public static MenuOption switchMenu(final MenuOption menu, final Scanner scanner) {
 		switch (menu) {
