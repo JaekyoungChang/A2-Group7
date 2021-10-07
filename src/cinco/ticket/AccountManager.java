@@ -116,6 +116,8 @@ public class AccountManager {
 	}
 	
 	private boolean validateEmail(final String email) {
+		
+		// check if email address is unique
 		for (final Account account : accounts) {
 			if (email.equals(account.getEmail())) {
 				LOGGER.info("Invalid email! Email address already in use."));
