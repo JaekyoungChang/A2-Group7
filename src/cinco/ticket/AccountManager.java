@@ -147,13 +147,21 @@ public class AccountManager {
 
 		// check role is not empty
 		if (role.isEmpty()) {
-			LOGGER.warning("Invalid type! Must not be empty.");
+			LOGGER.warning("Invalid role! Must not be empty.");
 			return false;
 		}
+		
+		final AccountType type = getAccountType(role);
 
 		// check role is valid
-		if (getAccountType(role) == null) {
-			LOGGER.warning("Invalid type! Unrecognised.");
+		if (type == null) {
+			LOGGER.warning("Invalid role! Unrecognised.");
+			return false;
+		}
+		
+		// check role is not technician
+		if (type == AccountType.TECHNICIAN) {
+			LOGGER.warning("Invalid role! Technicians can only be added by an administrator.");
 			return false;
 		}
 
@@ -203,8 +211,14 @@ public class AccountManager {
 			LOGGER.warning("Invalid phone number! Must not be empty.");
 			return false;
 		}
-
-		// TODO: more tests
+		
+		// check phone number is numeric
+		try {
+			Long.parseLong(phone);
+		} catch (final NumberFormatException e) {
+			LOGGER.warning("Invalid phone number! Must contain only numbers.");
+			return false;
+		}
 
 		return true;
 	}
@@ -212,8 +226,8 @@ public class AccountManager {
 	private boolean validatePassword(final String password) {
 
 		// check password length
-		if (password.length() < 6) {
-			LOGGER.warning("Invalid password! Minimum password length is 6 characters.");
+		if (password.length() < 20) {
+			LOGGER.warning("Invalid password! Minimum password length is 20 characters.");
 			return false;
 		}
 
