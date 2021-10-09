@@ -1,6 +1,8 @@
 # A2-Group7
 
-To run the program please open the "RunThis" file from within the A2-Group7-main folder. This is the same folder that contains this ReadMe file.
+To run the program please open the "run_this" file from within the A2-Group7-main folder. This is the same folder that contains this file.
+
+*Note: you will have to select the appropriate "run_this" file for your operating system*
 
 ## Using the program
 
