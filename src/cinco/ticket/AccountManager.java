@@ -6,12 +6,16 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import cinco.ticket.ConsoleManager.ConsoleException;
+import cinco.ticket.ConsoleManager.TextDevice;
+
 public class AccountManager {
+
+	private static final String EXIT_SIGNAL = "x";
 
 	private static AccountManager accountManager = null;
 
@@ -117,25 +121,31 @@ public class AccountManager {
 		}
 
 		// update account in memory
+		Account deleteAccount = null;
 		for (final Account inMemoryAccount : accounts) {
 			if (account.getName().equals(inMemoryAccount.getName())) {
-				accounts.remove(inMemoryAccount);
-				accounts.add(account);
+				deleteAccount = inMemoryAccount;
 			}
+		}
+		if (deleteAccount != null) {
+			accounts.remove(deleteAccount);
+			accounts.add(account);
 		}
 
 		// update account in accounts file
-		final String accountString = String.format("%s,%s,%s,%s\n", account.getName(), account.getEmail(),
-				account.getPhone(), account.getPassword());
+		final String accountsHeader = "TYPE,NAME,EMAIL,PHONE,PASSWORD\n";
+		final String accountString = String.format("%s,%s,%s,%s,%s", account.getType(), account.getName(),
+				account.getEmail(), account.getPhone(), account.getPassword());
 		try {
-			try (final Stream<String> stream = Files.lines(Paths.get(ACCOUNTS_FILE_PATH))) {
+			try (final Stream<String> stream = Files.lines(Paths.get(ACCOUNTS_FILE_PATH)).skip(1)) {
 				final List<String> updatedAccounts = stream.map(line -> {
 					final String[] fields = line.split(",");
 					final Account storedAccount = new Account(AccountType.valueOf(fields[0]), fields[1], fields[2],
 							fields[3], fields[4]);
 					return storedAccount.getName().equals(account.getName()) ? accountString : line;
 				}).collect(Collectors.toList());
-				Files.write(Paths.get(ACCOUNTS_FILE_PATH), updatedAccounts);
+				Files.write(Paths.get(ACCOUNTS_FILE_PATH), accountsHeader.getBytes());
+				Files.write(Paths.get(ACCOUNTS_FILE_PATH), updatedAccounts, StandardOpenOption.APPEND);
 			}
 		} catch (final IOException e) {
 			e.printStackTrace();
@@ -150,7 +160,7 @@ public class AccountManager {
 			LOGGER.warning("Invalid role! Must not be empty.");
 			return false;
 		}
-		
+
 		final AccountType type = getAccountType(role);
 
 		// check role is valid
@@ -158,7 +168,7 @@ public class AccountManager {
 			LOGGER.warning("Invalid role! Unrecognised.");
 			return false;
 		}
-		
+
 		// check role is not technician
 		if (type == AccountType.TECHNICIAN) {
 			LOGGER.warning("Invalid role! Technicians can only be added by an administrator.");
@@ -211,7 +221,7 @@ public class AccountManager {
 			LOGGER.warning("Invalid phone number! Must not be empty.");
 			return false;
 		}
-		
+
 		// check phone number is numeric
 		try {
 			Long.parseLong(phone);
@@ -261,111 +271,175 @@ public class AccountManager {
 		this.activeAccount = account;
 	}
 
-	public boolean login(final Scanner scanner) {
+	public boolean login() {
 
-		scanner.useDelimiter(System.lineSeparator());
+		final TextDevice io = ConsoleManager.defaultTextDevice();
 
-		System.out.println("*** LOGIN ***");
+		try {
+			io.printf("*** LOGIN ***%n");
+			io.printf("Type \"%s\" to return to the previous menu%n", EXIT_SIGNAL);
+			io.printf("%n");
 
-		System.out.print("Enter Name: ");
-		String name = scanner.next();
-		while (getAccount(name) == null) {
-			LOGGER.warning("Unrecognised account, try again...");
-			System.out.print("Enter Name:");
-			name = scanner.next();
+			String name = null;
+			while (true) {
+				io.printf("Enter Name: ");
+				name = io.readLine();
+				if (name.equals(EXIT_SIGNAL)) {
+					return false;
+				} else if (getAccount(name) == null) {
+					LOGGER.warning("Unrecognised account, try again...");
+				} else {
+					break;
+				}
+			}
+			final Account account = getAccount(name);
+
+			String password = null;
+			while (true) {
+				io.printf("Enter Password: ");
+				password = String.valueOf(io.readPassword());
+				if (password.equals(EXIT_SIGNAL)) {
+					return false;
+				} else if (!password.equals(account.getPassword())) {
+					LOGGER.warning("Invalid password! try again...");
+				} else {
+					break;
+				}
+			}
+
+			setActiveAccount(account);
+
+			io.printf("Login successful.%n");
+			io.printf("%n");
+		} catch (final ConsoleException e) {
+			e.printStackTrace();
 		}
-		final Account account = getAccount(name);
-
-		System.out.print("Enter Password: ");
-		String password = scanner.next();
-		while (!password.equals(account.getPassword())) {
-			LOGGER.warning("Invalid password! try again...");
-			System.out.print("Enter Password:");
-			password = scanner.next();
-		}
-
-		System.out.print(account);
-		setActiveAccount(account);
-
-		System.out.println("Login successful.");
 
 		return true;
 	}
 
-	public void resetPassword(final Scanner scanner) {
+	public boolean resetPassword() {
 
-		scanner.useDelimiter(System.lineSeparator());
+		final TextDevice io = ConsoleManager.defaultTextDevice();
 
-		System.out.println("*** RESET PASSWORD ***");
+		try {
+			io.printf("*** RESET PASSWORD ***%n");
+			io.printf(String.format("type \"%s\" to return to the previous menu%n", EXIT_SIGNAL));
+			io.printf("%n");
 
-		System.out.print("Enter Name: ");
-		String name = scanner.next();
-		while (!validateName(name)) {
-			System.out.print("Enter Name:");
-			name = scanner.next();
+			String name = null;
+			while (true) {
+				System.out.print("Enter Name: ");
+				name = io.readLine();
+				if (name.equals(EXIT_SIGNAL)) {
+					return false;
+				} else if (getAccount(name) == null) {
+					LOGGER.warning("Unrecognised account, try again...");
+				} else {
+					break;
+				}
+			}
+
+			String password = null;
+			while (true) {
+				System.out.print("Enter New Password: ");
+				password = String.valueOf(io.readPassword());
+				if (password.equals(EXIT_SIGNAL)) {
+					return false;
+				} else if (validatePassword(password)) {
+					break;
+				}
+			}
+
+			final Account account = getAccount(name);
+			account.setPassword(password);
+			updateAccount(account);
+
+			io.printf("Password reset.%n");
+			io.printf("%n");
+		} catch (final ConsoleException e) {
+			e.printStackTrace();
 		}
-		final Account account = getAccount(name);
 
-		System.out.print("Enter New Password: ");
-		String password = scanner.next();
-		while (!validatePassword(password)) {
-			System.out.print("Enter New Password:");
-			password = scanner.next();
-		}
-		account.setPassword(password);
-
-		updateAccount(account);
-
-		System.out.println("Password reset.");
+		return true;
 	}
 
-	public void createAccount(final Scanner scanner) {
+	public boolean createAccount() {
 
-		scanner.useDelimiter(System.lineSeparator());
+		final TextDevice io = ConsoleManager.defaultTextDevice();
 
-		System.out.println("*** CREATE ACCOUNT ***");
+		try {
+			io.printf("*** CREATE ACCOUNT ***%n");
+			io.printf(String.format("type \"%s\" to return to the previous menu%n", EXIT_SIGNAL));
+			io.printf("%n");
 
-		System.out.println("Choose a role:");
-		System.out.println("1. Staff");
-		System.out.println("2. Technician");
-		System.out.println();
-		System.out.print("Enter Choice: ");
-		String role = scanner.next();
-		while (!validateRole(role)) {
-			System.out.print("Enter Choice:");
-			role = scanner.next();
+			String role = null;
+			while (true) {
+				io.printf("Choose a role:%n");
+				io.printf("1. Staff%n");
+				io.printf("2. Technician%n");
+				io.printf("%n");
+				System.out.print("Enter Choice: ");
+				role = io.readLine();
+				if (role.equals(EXIT_SIGNAL)) {
+					return false;
+				} else if (validateRole(role)) {
+					break;
+				}
+			}
+
+			String name = null;
+			while (true) {
+				System.out.print("Enter Name: ");
+				name = io.readLine();
+				if (name.equals(EXIT_SIGNAL)) {
+					return false;
+				} else if (validateName(name)) {
+					break;
+				}
+			}
+
+			String email = null;
+			while (true) {
+				System.out.print("Enter Email: ");
+				email = io.readLine();
+				if (email.equals(EXIT_SIGNAL)) {
+					return false;
+				} else if (validateEmail(email)) {
+					break;
+				}
+			}
+
+			String phone = null;
+			while (true) {
+				System.out.print("Enter Phone: ");
+				phone = io.readLine();
+				if (phone.equals(EXIT_SIGNAL)) {
+					return false;
+				} else if (validatePhone(phone)) {
+					break;
+				}
+			}
+
+			String password = null;
+			while (true) {
+				System.out.print("Enter Password: ");
+				password = String.valueOf(io.readPassword());
+				if (password.equals(EXIT_SIGNAL)) {
+					return false;
+				} else if (validatePassword(password)) {
+					break;
+				}
+			}
+
+			addAccount(new Account(getAccountType(role), name, email, phone, password));
+
+			io.printf("Account created.%n");
+			io.printf("%n");
+		} catch (final ConsoleException e) {
+			e.printStackTrace();
 		}
 
-		System.out.print("Enter Name: ");
-		String name = scanner.next();
-		while (!validateName(name)) {
-			System.out.print("Enter Name:");
-			name = scanner.next();
-		}
-
-		System.out.print("Enter Email: ");
-		String email = scanner.next();
-		while (!validateEmail(email)) {
-			System.out.print("Enter Email:");
-			email = scanner.next();
-		}
-
-		System.out.print("Enter Phone: ");
-		String phone = scanner.next();
-		while (!validatePhone(phone)) {
-			System.out.print("Enter Phone:");
-			phone = scanner.next();
-		}
-
-		System.out.print("Enter Password: ");
-		String password = scanner.next();
-		while (!validatePassword(password)) {
-			System.out.print("Enter Password:");
-			password = scanner.next();
-		}
-
-		addAccount(new Account(getAccountType(role), name, email, phone, password));
-
-		System.out.println("Account created.");
+		return true;
 	}
 }

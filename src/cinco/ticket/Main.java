@@ -1,7 +1,6 @@
 package cinco.ticket;
 
 import java.util.Enumeration;
-import java.util.Scanner;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
@@ -29,25 +28,22 @@ public class Main {
 	private static final LoginMenu LOGIN_MENU = new LoginMenu();
 	private static final TicketMenu TICKET_MENU = new TicketMenu();
 
-	public static MenuOption switchMenu(final MenuOption menu, final Scanner scanner) {
+	public static MenuOption switchMenu(final MenuOption menu) {
 		switch (menu) {
 		case LOGIN:
-			return LOGIN_MENU.displayMenu(scanner);
+			return LOGIN_MENU.displayMenu();
 		case TICKET:
-			return TICKET_MENU.displayMenu(scanner);
+			return TICKET_MENU.displayMenu();
 		default:
-			System.out.println(String.format("Unknown Menu %s, returning to login menu...", menu));
+			System.out.println(String.format("Unknown menu \"%s\", returning to login menu...", menu));
 			return MenuOption.LOGIN;
 		}
 	}
 
 	public static void main(final String[] args) {
-		try (final Scanner scanner = new Scanner(System.in)) {
-			MenuOption menu = MenuOption.LOGIN;
-			while (true) {
-				menu = switchMenu(menu, scanner);
-				System.out.println();
-			}
+		MenuOption menu = MenuOption.LOGIN;
+		while (true) {
+			menu = switchMenu(menu);
 		}
 	}
 }
