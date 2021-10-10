@@ -4,6 +4,18 @@ To run the program please open the "run_this" file from within the A2-Group7-mai
 
 *Note 1: you will have to select the appropriate "run_this" file for your operating system*
 
+If you are unable to use the "run_this" files, please use the following steps:
+ - For the purposes of this guide it will be assumed that you will extract the zip folder containing the program to the desktop. If you extract the folder to another location, you will need to modify the instructions accordingly.
+
+ If you are using Windows 10:
+  1. Open Command Prompt by clicking on the start menu and then type cmd. Choose Command Prompt from the options available.
+  2. Once in Command Prompt navigate to the A2-Group7-main folder by typing the following in to Command Prompt: cd C:\Users\<Your Username>\Desktop\A2-Group7-main (Please note that you will need to change <Your Username> to your own username.)
+  3. Then type the following: set CLASSPATH=%CLASSPATH%;.\bin
+  4. Finally, run the program by typing: java cinco.ticket.Main
+
+  If you are using Linux:
+  1. -
+
 ## Using the program
 
 To use the program, you must first create an account (refer to [Creating an account](#creating-an-account)).
