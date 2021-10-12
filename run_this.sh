@@ -1,4 +1,3 @@
 #!/bin/bash
 
-export CLASSPATH=%CLASSPATH%;.\bin
-java cinco.ticket.Main
+java -classpath "$(pwd)\bin" cinco.ticket.Main

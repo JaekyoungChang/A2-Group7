@@ -1,2 +1,1 @@
-set CLASSPATH=%CLASSPATH%;.\bin
-java cinco.ticket.Main
+java -classpath "%cd%/bin"  cinco.ticket.Main
