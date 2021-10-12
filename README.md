@@ -1,26 +1,26 @@
 # A2-Group7
 
-To run the program please open the "run_this" file from within the A2-Group7-main folder. This is the same folder that contains this file.
+## Compiling the program
 
-*Note 1: you will have to select the appropriate "run_this" file for your operating system*
+To compile the program please run the "compile" script from within the "A2-Group7-main" directory (the directory that contains this file).
 
-If you are unable to use the "run_this" files, please use the following steps:
- - For the purposes of this guide it will be assumed that you will extract the zip folder containing the program to the desktop. If you extract the folder to another location, you will need to modify the instructions accordingly.
+> Note 1: you will have to select the appropriate "compile" script your operating system - `compile.bat` is for a Windows-based OS and `compile.sh` is for a Linux-based OS. If you are using a Linux-based OS, you may need to make the script executable first by running `chmod +x compile.sh`.
 
- If you are using Windows 10:
-  1. Open Command Prompt by clicking on the start menu and then type cmd. Choose Command Prompt from the options available.
-  2. Once in Command Prompt navigate to the A2-Group7-main folder by typing the following in to Command Prompt: cd C:\Users\<Your Username>\Desktop\A2-Group7-main (Please note that you will need to change <Your Username> to your own username.)
-  3. Then type the following and then press enter: set CLASSPATH=%CLASSPATH%;.\bin
-  4. Finally, run the program by typing the following, and then pressing enter: java cinco.ticket.Main
+If you would like to manually compile the program, simply follow the commands in the "compile" script.
 
-  If you are using Linux:
-  1. -
+## Runnning the program
+
+To run the program please run the "run" script from within the "A2-Group7-main" directory (the directory that contains this file).
+
+> Note 2: you will have to select the appropriate "run" script for your operating system - `run.bat` is for a Windows-based OS and `run.sh` is for a Linux-based OS. If you are using a Linux-based OS, you may need to make the script executable first by running `chmod +x run.sh`.*
+
+If you would like to manually run the program, simply follow the commands in the "run" script.
 
 ## Using the program
 
-To use the program, you must first create an account (refer to [Creating an account](#creating-an-account)).
+To use the program, you must first [create an account](#creating-an-account). You can then [log in](#logging-in-to-the-system) to be taken to the [ticket menu](#using-the-ticket-menu).
 
-*Note 2: You can type x at any time to return to the previous menu.*
+> Note 3: You can type x at any time to return to the previous menu.
 
 If you would like to exit the program at this stage, please choose "4. Exit".
 
@@ -33,9 +33,9 @@ If you would like to exit the program at this stage, please choose "4. Exit".
 4. Enter your contact phone number.
 5. Enter the password that you would like to use. (Please see Note 4.)
 
-*Note 3: Staff that require the Technician role must be added to the system by an administrator. If you require this kind of access, please contact your administrator.*
+> Note 4: Staff that require the Technician role must be added to the system by an administrator. If you require this kind of access, please contact your administrator.
 
-*Note 4: Your password must be at least 20 characters in length and contain Upper and Lowercase characters and a number.*
+> Note 5: Your password must be at least 20 characters in length and contain Upper and Lowercase characters and a number.*
 
 ### Logging in to the system
 
@@ -49,12 +49,12 @@ If you would like to exit the program at this stage, please choose "4. Exit".
 2. Enter your name exactly as you typed it when you created your account.
 3. Enter a new password. (Please see Note 5.)
 
-*Note 5: Please be aware that the same password requirements apply for a reset password as for initial password creation, these are:
-        - Password must be at least 20 characters in length.
-        - Password must contain upper and lowercase characters
-        - Password must contain at least one number.*
+> Note 6: Please be aware that the same password requirements apply for a reset password as for initial password creation, these are:
+> - Password must be at least 20 characters in length.
+> - Password must contain upper and lowercase characters.
+> - Password must contain at least one number.
 
-## Using the Ticket menu
+### The Ticket menu
 
 Once you are logged in, you can choose from the following options:
 
