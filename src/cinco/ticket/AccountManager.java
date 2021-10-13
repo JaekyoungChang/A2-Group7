@@ -6,6 +6,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -31,11 +32,13 @@ public class AccountManager {
 	private static final String ACCOUNTS_FILE_PATH = "accounts.csv";
 
 	private final ArrayList<Account> accounts;
+	private final ArrayList<Ticket> tickets;
 
 	private Account activeAccount;
 
 	public AccountManager() {
 		this.accounts = new ArrayList<Account>();
+		this.tickets = new ArrayList<Ticket>();
 		loadAccounts();
 
 		this.activeAccount = null;
@@ -48,6 +51,9 @@ public class AccountManager {
 				// create accounts file
 				Files.write(Paths.get(ACCOUNTS_FILE_PATH), "TYPE,NAME,EMAIL,PHONE,PASSWORD\n".getBytes(),
 						StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+
+				addHardCodeAccounts();
+
 				LOGGER.info("Created accounts file");
 			} else {
 				// load accounts from accounts file
@@ -109,6 +115,18 @@ public class AccountManager {
 		} catch (final IOException e) {
 			e.printStackTrace();
 		}
+
+	}
+
+	private void addHardCodeAccounts() {
+
+		addAccount(new Account(AccountType.STAFF, "test", "test@cinco.com", "0", "123"));
+		addAccount(new Technician(AccountType.TECHNICIAN, "Harry Styles", "harrystyles@cinco.com", "1", "123", 1));
+		addAccount(new Technician(AccountType.TECHNICIAN, "Niall Horan", "niallhoran@cinco.com", "2", "123", 1));
+		addAccount(new Technician(AccountType.TECHNICIAN, "Liam Payne", "liampayne@cinco.com", "3", "123", 1));
+		addAccount(
+				new Technician(AccountType.TECHNICIAN, "Louis Tomlinson", "louistomlinson@cinco.com", "4", "123", 2));
+		addAccount(new Technician(AccountType.TECHNICIAN, "Zayn Malik", "zaynmalik@cinco.com", "5", "123", 2));
 
 	}
 
@@ -441,5 +459,117 @@ public class AccountManager {
 		}
 
 		return true;
+	}
+
+	public void submitTicket() {
+
+		final TextDevice io = ConsoleManager.defaultTextDevice();
+		String description = null;
+
+		try {
+			while (true) {
+				System.out.print("Enter ticket description: ");
+				description = io.readLine();
+				if (validateDescription(description)) {
+					break;
+				}
+			}
+
+			String severity = null;
+
+			while (true) {
+				System.out.print("Enter ticket severity level (1-3): ");
+				severity = io.readLine();
+				if (validateSeverity(severity)) {
+					break;
+				}
+			}
+
+			Ticket ticket = new Ticket(description, TicketSeverity.values()[Integer.valueOf(severity) - 1],
+					activeAccount);
+
+			tickets.add(ticket);
+			assignTicket(ticket);
+			io.printf("Ticket submitted.%n");
+			io.printf("%n");
+		} catch (ConsoleException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public boolean validateDescription(final String description) {
+
+		// check if ticket description is not empty
+		if (description.isEmpty()) {
+			LOGGER.warning("Invalid ticket description! Must not be empty.");
+			return false;
+		}
+
+		return true;
+	}
+
+	public boolean validateSeverity(final String severity) {
+
+		// check if severity level is not empty
+		if (severity.isEmpty()) {
+			LOGGER.warning("Invalid severity level! Must not be empty.");
+			return false;
+		}
+
+		if (Integer.valueOf(severity) < 1 || Integer.valueOf(severity) > 3) {
+			LOGGER.warning("Invalid severity level! Must enter a severity level between 1 and 3.");
+			return false;
+		}
+
+		return true;
+	}
+
+	public void assignTicket(final Ticket ticket) {
+
+		int i = 0;
+		ArrayList<Technician> technician = getTechnicians(ticket.getSeverity().getSeverityInt());
+		// list of technicians with the least number of tickets that can be assigned the
+		// ticket
+		ArrayList<Technician> assignTicketTech = new ArrayList<Technician>();
+		Technician assignedTech = null;
+
+		while (assignTicketTech.size() == 0) {
+			for (Technician tech : technician) {
+				if (tech.numAssignedTickets() == i) {
+					assignTicketTech.add(tech);
+				}
+			}
+
+			i++;
+		}
+
+		if (assignTicketTech.size() == 1) {
+			assignedTech = assignTicketTech.get(0);
+			assignedTech.assignTicket(ticket);
+		} else {
+			Random rand = new Random();
+			assignedTech = assignTicketTech.get(rand.nextInt(assignTicketTech.size()));
+			assignedTech.assignTicket(ticket);
+		}
+
+	}
+
+	public ArrayList<Technician> getTechnicians(final int severity) {
+
+		// list of technicians that can service ticket
+		ArrayList<Technician> technicians = new ArrayList<Technician>();
+
+		for (Account account : accounts) {
+			if (account.getType() == AccountType.TECHNICIAN) {
+				Technician tech = (Technician) account;
+				if (severity <= 2 && tech.getLevel() == 1) {
+					technicians.add(tech);
+				} else if (severity == 3 && tech.getLevel() == 2) {
+					technicians.add(tech);
+				}
+			}
+		}
+
+		return technicians;
 	}
 }
