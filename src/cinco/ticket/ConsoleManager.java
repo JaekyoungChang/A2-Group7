@@ -120,11 +120,11 @@ public class ConsoleManager {
 		}
 	}
 
-	private static TextDevice DEFAULT = (System.console() == null) ? streamDevice(System.in, System.out)
+	private static TextDevice DEFAULT_TEXT_DEVICE = (System.console() == null) ? streamDevice(System.in, System.out)
 			: new ConsoleDevice(System.console());
 
 	public static TextDevice defaultTextDevice() {
-		return DEFAULT;
+		return DEFAULT_TEXT_DEVICE;
 	}
 
 	public static TextDevice streamDevice(final InputStream in, final OutputStream out) {

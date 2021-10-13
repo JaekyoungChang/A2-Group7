@@ -6,41 +6,52 @@ import cinco.ticket.ConsoleManager.TextDevice;
 public class TicketMenu {
 
 	private final AccountManager accountManager;
+	private final TicketManager ticketManager;
 
 	public TicketMenu() {
-		accountManager = AccountManager.getAccountManager();
+		this.accountManager = AccountManager.defaultAccountManager();
+		this.ticketManager = TicketManager.defaultTicketManager();
 	}
 
 	public MenuOption displayMenu() {
-
-		final TextDevice io = ConsoleManager.defaultTextDevice();
+		final AccountType accountType = accountManager.getActiveAccount() == null ? AccountType.STAFF
+				: accountManager.getActiveAccount().getType();
 		final String username = accountManager.getActiveAccount() == null ? "Nobody"
 				: accountManager.getActiveAccount().getName();
 
+		final TextDevice io = ConsoleManager.defaultTextDevice();
+
 		try {
+			// TODO: add more options if account type is technician
 			io.printf("*** TICKET MENU ***%n");
 			io.printf("Welcome %s, Select from the following options:%n", username);
-			io.printf("1. Create Ticket%n");
-			io.printf("2. Logout%n");
-			io.printf("3. Exit%n");
+			io.printf("%n");
+
+			io.printf("1. List Tickets%n");
+			io.printf("2. Create Ticket%n");
+			io.printf("3. Logout%n");
+			io.printf("4. Exit%n");
 			io.printf("%n");
 
 			System.out.print("Enter Choice: ");
 			final String choice = io.readLine();
 
 			switch (choice) {
-				case "1":
-					accountManager.submitTicket();
-					break;
-				case "2":
-					io.printf("Logging out...%n%n");
-					return MenuOption.LOGIN;
-				case "3":
-					io.printf("Exiting program...%n%n");
-					System.exit(0);
-				default:
-					io.printf("Invalid choice. Please enter a number from 1-2.%n");
-				}
+			case "1":
+				ticketManager.listTickets();
+				break;
+			case "2":
+				ticketManager.submitTicket();
+				break;
+			case "3":
+				io.printf("Logging out...%n%n");
+				return MenuOption.LOGIN;
+			case "4":
+				io.printf("Exiting program...%n%n");
+				System.exit(0);
+			default:
+				io.printf("Invalid choice. Please enter a number from 1-4.%n");
+			}
 
 		} catch (final ConsoleException e) {
 			e.printStackTrace();
