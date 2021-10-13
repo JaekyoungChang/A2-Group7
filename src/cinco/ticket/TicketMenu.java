@@ -20,7 +20,7 @@ public class TicketMenu {
 		try {
 			io.printf("*** TICKET MENU ***%n");
 			io.printf("Welcome %s, Select from the following options:%n", username);
-			io.printf("1. Example%n");
+			io.printf("1. Create Ticket%n");
 			io.printf("2. Logout%n");
 			io.printf("3. Exit%n");
 			io.printf("%n");
@@ -30,7 +30,7 @@ public class TicketMenu {
 
 			switch (choice) {
 				case "1":
-					io.printf("Example choice...%n%n");
+					accountManager.submitTicket();
 					break;
 				case "2":
 					io.printf("Logging out...%n%n");
