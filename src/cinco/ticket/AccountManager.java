@@ -6,6 +6,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -14,31 +15,58 @@ import cinco.ticket.ConsoleManager.ConsoleException;
 import cinco.ticket.ConsoleManager.TextDevice;
 
 public class AccountManager {
-
-	private static final String EXIT_SIGNAL = "x";
-
-	private static AccountManager accountManager = null;
-
-	public static AccountManager getAccountManager() {
-		if (accountManager == null) {
-			accountManager = new AccountManager();
-		}
-
-		return accountManager;
-	}
-
 	private static final Logger LOGGER = Logger.getLogger(AccountManager.class.getName());
 	private static final String ACCOUNTS_FILE_PATH = "accounts.csv";
+	private static final String EXIT_SIGNAL = "x";
 
-	private final ArrayList<Account> accounts;
+	private static AccountManager DEFAULT_ACCOUNT_MANAGER = new AccountManager();
+
+	public static AccountManager defaultAccountManager() {
+		return DEFAULT_ACCOUNT_MANAGER;
+	}
+
+	private final List<Account> accounts;
 
 	private Account activeAccount;
 
 	public AccountManager() {
+		this.activeAccount = null;
 		this.accounts = new ArrayList<Account>();
 		loadAccounts();
+	}
 
-		this.activeAccount = null;
+	public Account getActiveAccount() {
+		return activeAccount;
+	}
+
+	public void setActiveAccount(final Account account) {
+		this.activeAccount = account;
+	}
+
+	public List<Account> getAccounts() {
+		return accounts;
+	}
+
+	public Account getAccount(final UUID id) {
+		for (final Account account : accounts) {
+			if (account.getId().equals(id)) {
+				LOGGER.info(String.format("Found account with id %s", id));
+				return account;
+			}
+		}
+		LOGGER.info(String.format("Unable to find account with id %s", id));
+		return null;
+	}
+
+	public Account getAccount(final String name) {
+		for (final Account account : accounts) {
+			if (account.getName().equals(name)) {
+				LOGGER.info(String.format("Found account for %s", name));
+				return account;
+			}
+		}
+		LOGGER.info(String.format("Unable to find account for %s", name));
+		return null;
 	}
 
 	private void loadAccounts() {
@@ -46,16 +74,18 @@ public class AccountManager {
 			// check if accounts file exists
 			if (Files.notExists(Paths.get(ACCOUNTS_FILE_PATH))) {
 				// create accounts file
-				Files.write(Paths.get(ACCOUNTS_FILE_PATH), "TYPE,NAME,EMAIL,PHONE,PASSWORD\n".getBytes(),
+				Files.write(Paths.get(ACCOUNTS_FILE_PATH), "ID,TYPE,LEVEL,NAME,EMAIL,PHONE,PASSWORD\n".getBytes(),
 						StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+				addHardCodedAccounts();
 				LOGGER.info("Created accounts file");
 			} else {
 				// load accounts from accounts file
 				try (final Stream<String> stream = Files.lines(Paths.get(ACCOUNTS_FILE_PATH)).skip(1)) {
 					stream.forEach(line -> {
 						final String[] fields = line.split(",");
-						final Account account = new Account(AccountType.valueOf(fields[0]), fields[1], fields[2],
-								fields[3], fields[4]);
+						final Account account = new Account(UUID.fromString(fields[0]), AccountType.valueOf(fields[1]),
+								AccountLevel.valueOf(Integer.valueOf(fields[2])), fields[3], fields[4], fields[5],
+								fields[6]);
 						accounts.add(account);
 					});
 				}
@@ -64,6 +94,22 @@ public class AccountManager {
 		} catch (final IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void addHardCodedAccounts() {
+		// TODO: don't hard-code this, move it to a config file
+		addAccount(new Account(UUID.randomUUID(), AccountType.STAFF, AccountLevel.ZERO, "test", "test@cinco.com", "0",
+				"123"));
+		addAccount(new Account(UUID.randomUUID(), AccountType.TECHNICIAN, AccountLevel.ONE, "Harry Styles",
+				"harrystyles@cinco.com", "1", "123"));
+		addAccount(new Account(UUID.randomUUID(), AccountType.TECHNICIAN, AccountLevel.ONE, "Niall Horan",
+				"niallhoran@cinco.com", "2", "123"));
+		addAccount(new Account(UUID.randomUUID(), AccountType.TECHNICIAN, AccountLevel.ONE, "Liam Payne",
+				"liampayne@cinco.com", "3", "123"));
+		addAccount(new Account(UUID.randomUUID(), AccountType.TECHNICIAN, AccountLevel.TWO, "Louis Tomlinson",
+				"louistomlinson@cinco.com", "4", "123"));
+		addAccount(new Account(UUID.randomUUID(), AccountType.TECHNICIAN, AccountLevel.TWO, "Zayn Malik",
+				"zaynmalik@cinco.com", "5", "123"));
 	}
 
 	private AccountType getAccountType(final String role) {
@@ -78,17 +124,6 @@ public class AccountManager {
 		}
 	}
 
-	private Account getAccount(final String name) {
-		for (final Account account : accounts) {
-			if (name.equals(account.getName())) {
-				LOGGER.info(String.format("Found account for %s", name));
-				return account;
-			}
-		}
-		LOGGER.info(String.format("Unable to find account for %s", name));
-		return null;
-	}
-
 	private void addAccount(final Account account) {
 
 		// check account
@@ -101,15 +136,15 @@ public class AccountManager {
 		accounts.add(account);
 
 		// write account to accounts file
-		final String accountString = String.format("%s,%s,%s,%s,%s\n", account.getType(), account.getName(),
-				account.getEmail(), account.getPhone(), account.getPassword());
+		final String accountString = String.format("%s,%s,%s,%s,%s,%s,%s\n", account.getId(), account.getType(),
+				account.getLevel().getLevel(), account.getName(), account.getEmail(), account.getPhone(),
+				account.getPassword());
 		try {
 			Files.write(Paths.get(ACCOUNTS_FILE_PATH), accountString.getBytes(), StandardOpenOption.APPEND);
 			LOGGER.info(String.format("Added account %s to accounts file", account));
 		} catch (final IOException e) {
 			e.printStackTrace();
 		}
-
 	}
 
 	private void updateAccount(final Account account) {
@@ -133,15 +168,17 @@ public class AccountManager {
 		}
 
 		// update account in accounts file
-		final String accountsHeader = "TYPE,NAME,EMAIL,PHONE,PASSWORD\n";
-		final String accountString = String.format("%s,%s,%s,%s,%s", account.getType(), account.getName(),
-				account.getEmail(), account.getPhone(), account.getPassword());
+		final String accountsHeader = "ID,TYPE,LEVEL,NAME,EMAIL,PHONE,PASSWORD\n";
+		final String accountString = String.format("%s,%s,%s,%s,%s,%s,%s", account.getId(), account.getType(),
+				account.getLevel().getLevel(), account.getName(), account.getEmail(), account.getPhone(),
+				account.getPassword());
 		try {
 			try (final Stream<String> stream = Files.lines(Paths.get(ACCOUNTS_FILE_PATH)).skip(1)) {
 				final List<String> updatedAccounts = stream.map(line -> {
 					final String[] fields = line.split(",");
-					final Account storedAccount = new Account(AccountType.valueOf(fields[0]), fields[1], fields[2],
-							fields[3], fields[4]);
+					final Account storedAccount = new Account(UUID.fromString(fields[0]),
+							AccountType.valueOf(fields[1]), AccountLevel.valueOf(fields[2]), fields[3], fields[4],
+							fields[5], fields[6]);
 					return storedAccount.getName().equals(account.getName()) ? accountString : line;
 				}).collect(Collectors.toList());
 				Files.write(Paths.get(ACCOUNTS_FILE_PATH), accountsHeader.getBytes());
@@ -263,20 +300,11 @@ public class AccountManager {
 		return true;
 	}
 
-	public Account getActiveAccount() {
-		return activeAccount;
-	}
-
-	public void setActiveAccount(final Account account) {
-		this.activeAccount = account;
-	}
-
 	public boolean login() {
-
 		final TextDevice io = ConsoleManager.defaultTextDevice();
 
 		try {
-			io.printf("*** LOGIN ***%n");
+			io.printf("%n*** LOGIN ***%n");
 			io.printf("Type \"%s\" to return to the previous menu%n", EXIT_SIGNAL);
 			io.printf("%n");
 
@@ -309,8 +337,7 @@ public class AccountManager {
 
 			setActiveAccount(account);
 
-			io.printf("Login successful.%n");
-			io.printf("%n");
+			io.printf("Login successful.%n%n");
 		} catch (final ConsoleException e) {
 			e.printStackTrace();
 		}
@@ -319,17 +346,16 @@ public class AccountManager {
 	}
 
 	public boolean resetPassword() {
-
 		final TextDevice io = ConsoleManager.defaultTextDevice();
 
 		try {
-			io.printf("*** RESET PASSWORD ***%n");
+			io.printf("%n*** RESET PASSWORD ***%n");
 			io.printf(String.format("type \"%s\" to return to the previous menu%n", EXIT_SIGNAL));
 			io.printf("%n");
 
 			String name = null;
 			while (true) {
-				System.out.print("Enter Name: ");
+				io.printf("Enter Name: ");
 				name = io.readLine();
 				if (name.equals(EXIT_SIGNAL)) {
 					return false;
@@ -342,7 +368,7 @@ public class AccountManager {
 
 			String password = null;
 			while (true) {
-				System.out.print("Enter New Password: ");
+				io.printf("Enter New Password: ");
 				password = String.valueOf(io.readPassword());
 				if (password.equals(EXIT_SIGNAL)) {
 					return false;
@@ -355,8 +381,7 @@ public class AccountManager {
 			account.setPassword(password);
 			updateAccount(account);
 
-			io.printf("Password reset.%n");
-			io.printf("%n");
+			io.printf("Password reset.%n%n");
 		} catch (final ConsoleException e) {
 			e.printStackTrace();
 		}
@@ -365,32 +390,16 @@ public class AccountManager {
 	}
 
 	public boolean createAccount() {
-
 		final TextDevice io = ConsoleManager.defaultTextDevice();
 
 		try {
-			io.printf("*** CREATE ACCOUNT ***%n");
+			io.printf("%n*** CREATE ACCOUNT ***%n");
 			io.printf(String.format("type \"%s\" to return to the previous menu%n", EXIT_SIGNAL));
 			io.printf("%n");
 
-			String role = null;
-			while (true) {
-				io.printf("Choose a role:%n");
-				io.printf("1. Staff%n");
-				io.printf("2. Technician%n");
-				io.printf("%n");
-				System.out.print("Enter Choice: ");
-				role = io.readLine();
-				if (role.equals(EXIT_SIGNAL)) {
-					return false;
-				} else if (validateRole(role)) {
-					break;
-				}
-			}
-
 			String name = null;
 			while (true) {
-				System.out.print("Enter Name: ");
+				io.printf("Enter Name: ");
 				name = io.readLine();
 				if (name.equals(EXIT_SIGNAL)) {
 					return false;
@@ -401,7 +410,7 @@ public class AccountManager {
 
 			String email = null;
 			while (true) {
-				System.out.print("Enter Email: ");
+				io.printf("Enter Email: ");
 				email = io.readLine();
 				if (email.equals(EXIT_SIGNAL)) {
 					return false;
@@ -412,7 +421,7 @@ public class AccountManager {
 
 			String phone = null;
 			while (true) {
-				System.out.print("Enter Phone: ");
+				io.printf("Enter Phone: ");
 				phone = io.readLine();
 				if (phone.equals(EXIT_SIGNAL)) {
 					return false;
@@ -423,7 +432,7 @@ public class AccountManager {
 
 			String password = null;
 			while (true) {
-				System.out.print("Enter Password: ");
+				io.printf("Enter Password: ");
 				password = String.valueOf(io.readPassword());
 				if (password.equals(EXIT_SIGNAL)) {
 					return false;
@@ -432,10 +441,9 @@ public class AccountManager {
 				}
 			}
 
-			addAccount(new Account(getAccountType(role), name, email, phone, password));
+			addAccount(new Account(name, email, phone, password));
 
-			io.printf("Account created.%n");
-			io.printf("%n");
+			io.printf("Account created.%n%n");
 		} catch (final ConsoleException e) {
 			e.printStackTrace();
 		}
