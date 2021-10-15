@@ -16,7 +16,7 @@ import cinco.ticket.ConsoleManager.TextDevice;
 
 public class AccountManager {
 	private static final Logger LOGGER = Logger.getLogger(AccountManager.class.getName());
-	private static final String ACCOUNTS_FILE_PATH = "accounts.csv";
+	private static final String ACCOUNTS_FILE_PATH = "data/accounts.csv";
 	private static final String EXIT_SIGNAL = "x";
 
 	private static AccountManager DEFAULT_ACCOUNT_MANAGER = new AccountManager();

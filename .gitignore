@@ -23,6 +23,12 @@
 hs_err_pid*
 
 # Custom
-bin/cinco/
-accounts.csv
-tickets.csv
+bin/
+build/
+data/
+
+# Ignore
+!bin/compile.bat
+!bin/run.bat
+!bin/compile.sh
+!bin/run.sh

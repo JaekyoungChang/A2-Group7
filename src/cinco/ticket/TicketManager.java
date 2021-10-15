@@ -18,7 +18,7 @@ import cinco.ticket.ConsoleManager.TextDevice;
 
 public class TicketManager {
 	private static final Logger LOGGER = Logger.getLogger(TicketManager.class.getName());
-	private static final String TICKETS_FILE_PATH = "tickets.csv";
+	private static final String TICKETS_FILE_PATH = "data/tickets.csv";
 	private static final String EXIT_SIGNAL = "x";
 
 	private static TicketManager DEFAULT_TICKET_MANAGER = new TicketManager();;
