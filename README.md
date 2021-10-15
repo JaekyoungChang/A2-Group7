@@ -27,8 +27,8 @@ To use this program, you will need to type commands as prompted by the text menu
 When you launch the program, you will see the login menu. From here you can manage accounts and [log in](#log-in-to-the-system) to progress to [the ticket menu](#the-ticket-menu). You'll be able to choose from the following options:
 
 1. [Login](#log-in-to-the-system)
-2. [Reset Password(#reset-your-password)
-3. [Create Account(#create-an-account)
+2. [Reset Password](#reset-your-password)
+3. [Create Account](#create-an-account)
 4. [Exit](#exit-the-system)
 
 ### Log in to the system
@@ -49,7 +49,7 @@ If you ever forget your password, you can reset it here.
 
 > Note 4: Please be aware that the same password requirements apply for a reset password as for initial password creation (refer to Note 6 below).
 
-### Creating an account
+### Create an account
 
 Before you can [log in](#log-in-to-the-system), you must first create an account.
 
@@ -69,10 +69,10 @@ Your account will be created with a unique id and you'll be able to log in immed
 
 Once you are logged in, you will arrive at the ticket menu, where you can choose from the following options:
 
-[1. List Tickets](#list-tickets)
-[2. Create Ticket](#create-a-ticket)
-[3. Logout](#log-out-of-the-system)
-[4. Exit](#exit-the-system)
+1. [List Tickets](#list-tickets)
+2. [Create Ticket](#create-a-ticket)
+3. [Logout](#log-out-of-the-system)
+4. [Exit](#exit-the-system)
 
 ### List tickets
 
