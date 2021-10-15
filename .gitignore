@@ -26,6 +26,8 @@ hs_err_pid*
 bin/
 build/
 data/
+.classpath
+.project
 
 # Ignore
 !bin/compile.bat
