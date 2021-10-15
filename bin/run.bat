@@ -1,13 +1,12 @@
 @REM This script will launch the Cinco Ticket program.
 
-@REM move to base directory
-cd "%cd%\.."
+FOR /F "tokens=* USEBACKQ" %%g IN (`echo %~dp0`) do (SET "SCRIPT_DIR=%%g")
 
 @REM launch from compiled class files
-@REM java -classpath "%cd%\build" cinco.ticket.Main
+@REM java -classpath "%SCRIPT_DIR%\..\build" cinco.ticket.Main
 
 @REM launch from jar file (specifying the entrypoint)
-@REM java -classpath "%cd%\build\ticket.jar" cinco.ticket.Main
+@REM java -classpath "%SCRIPT_DIR%\..\build\ticket.jar" cinco.ticket.Main
 
 @REM launch from runnable jar file
-java -jar "%cd%\build\ticket.jar"
+java -jar "%SCRIPT_DIR%\..\build\ticket.jar"

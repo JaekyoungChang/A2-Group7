@@ -1,16 +1,15 @@
 @REM This script will compile the Cinco Ticket program to class files 
 @REM and then build a runnable JAR file from those class files.
 
-@REM move to base directory
-cd "%cd%\.."
+FOR /F "tokens=* USEBACKQ" %%g IN (`echo %~dp0`) do (SET "SCRIPT_DIR=%%g")
 
 @REM compile class files
-dir /s /b "%cd%\src\cinco\ticket" > "%cd%\files.txt"
-javac -d "%cd%\build" @"%cd%\files.txt"
-del /f "%cd%\files.txt"
+dir /s /b "%SCRIPT_DIR%\..\src\cinco\ticket" > "%SCRIPT_DIR%\files.txt"
+javac -d "%SCRIPT_DIR%\..\build" @"%SCRIPT_DIR%\files.txt"
+del /f "%SCRIPT_DIR%\files.txt"
 
 @REM build runnable jar file
-jar -cvfe "%cd%\build\ticket.jar" "cinco.ticket.Main" -C "%cd%\build" .
+jar -cvfe "%SCRIPT_DIR%\..\build\ticket.jar" "cinco.ticket.Main" -C "%SCRIPT_DIR%\..\build" .
 
 @REM clean up class files
-@REM rd /s /q "%cd%\build\cinco"
+@REM rd /s /q "%SCRIPT_DIR%\..\build\cinco"

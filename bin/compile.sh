@@ -3,17 +3,16 @@
 # This script will compile the Cinco Ticket program to class files 
 # and then build a runnable JAR file from those class files.
 
-# move to base director
-cd "$(pwd)/.."
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # compile class files
-find "$(pwd)/src/cinco/ticket" -type f > "$(pwd)/files.txt"
-mkdir "$(pwd)/build"
-javac -d "$(pwd)/build" @"$(pwd)/files.txt"
-rm -f "$(pwd)/files.txt"
+find "$SCRIPT_DIR/../src/cinco/ticket" -type f > "$SCRIPT_DIR/files.txt"
+mkdir "$SCRIPT_DIR/../build"
+javac -d "$SCRIPT_DIR/../build" @"$SCRIPT_DIR/files.txt"
+rm -f "$SCRIPT_DIR/files.txt"
 
 # build jar
-jar -cvfe "$(pwd)/build/ticket.jar" "cinco.ticket.Main" -C "$(pwd)/build" .
+jar -cvfe "$SCRIPT_DIR/../build/ticket.jar" "cinco.ticket.Main" -C "$SCRIPT_DIR/../build" .
 
 # clean up class files
-# rm -rf "$(pwd)/build/cinco"
+# rm -rf "$SCRIPT_DIR/../build/cinco"

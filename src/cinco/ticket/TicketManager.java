@@ -67,6 +67,8 @@ public class TicketManager {
 			// check if tickets file exists
 			if (Files.notExists(Paths.get(TICKETS_FILE_PATH))) {
 				// create tickets file
+				Files.createDirectories(Paths.get(TICKETS_FILE_PATH).getParent());
+				Files.createFile(Paths.get(TICKETS_FILE_PATH));
 				Files.write(Paths.get(TICKETS_FILE_PATH),
 						"ID,DESCRIPTION,STATUS,SEVERITY,SUBMITTED_BY,ASSIGNED_TO\n".getBytes(),
 						StandardOpenOption.CREATE, StandardOpenOption.APPEND);
@@ -171,7 +173,7 @@ public class TicketManager {
 					io.printf("%n");
 				}
 			} else {
-				io.printf("You have no tickets");
+				io.printf("You have no tickets%n%n");
 			}
 		} catch (final ConsoleException e) {
 			e.printStackTrace();

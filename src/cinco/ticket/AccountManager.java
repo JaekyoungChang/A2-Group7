@@ -74,6 +74,8 @@ public class AccountManager {
 			// check if accounts file exists
 			if (Files.notExists(Paths.get(ACCOUNTS_FILE_PATH))) {
 				// create accounts file
+				Files.createDirectories(Paths.get(ACCOUNTS_FILE_PATH).getParent());
+				Files.createFile(Paths.get(ACCOUNTS_FILE_PATH));
 				Files.write(Paths.get(ACCOUNTS_FILE_PATH), "ID,TYPE,LEVEL,NAME,EMAIL,PHONE,PASSWORD\n".getBytes(),
 						StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 				addHardCodedAccounts();

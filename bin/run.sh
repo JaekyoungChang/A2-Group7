@@ -2,14 +2,13 @@
 
 # This script will launch the Cinco Ticket program.
 
-# move to base director
-cd "$(pwd)/.."
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # launch from compiled class files
-# java -classpath "$(pwd)/build" cinco.ticket.Main
+# java -classpath "$SCRIPT_DIR/../build" cinco.ticket.Main
 
 # launch from jar file (specifying the entrypoint)
-# java -classpath "$(pwd)/build/ticket.jar" cinco.ticket.Main
+# java -classpath "$SCRIPT_DIR/../build/ticket.jar" cinco.ticket.Main
 
 # launch from runnable jar file
-java -jar "$(pwd)/build/ticket.jar"
+java -jar "$SCRIPT_DIR/../build/ticket.jar"
