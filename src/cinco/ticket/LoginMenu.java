@@ -31,7 +31,14 @@ public class LoginMenu {
 			switch (choice) {
 			case "1":
 				if (accountManager.login()) {
-					return MenuOption.TICKET;
+
+					if (accountManager.getActiveAccount().getType() == AccountType.STAFF) {
+						return MenuOption.TICKET;
+					}
+
+					else {
+						return MenuOption.TECHNICIAN;
+					}
 				}
 				break;
 			case "2":
@@ -46,7 +53,9 @@ public class LoginMenu {
 			default:
 				io.printf("Invalid choice. Please enter a number from 1-4.%n");
 			}
-		} catch (final ConsoleException e) {
+		} catch (
+
+		final ConsoleException e) {
 			e.printStackTrace();
 		}
 
