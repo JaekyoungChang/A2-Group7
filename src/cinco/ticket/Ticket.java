@@ -1,9 +1,13 @@
 package cinco.ticket;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 public class Ticket {
 
+	private ZonedDateTime timestamp;
 	private UUID id;
 	private String description;
 	private TicketSeverity severity;
@@ -11,8 +15,9 @@ public class Ticket {
 	private UUID submittedBy;
 	private UUID assignedTo;
 
-	public Ticket(final UUID id, final String description, final TicketStatus status, final TicketSeverity severity,
-			final UUID submittedBy, final UUID assignedTo) {
+	public Ticket(final ZonedDateTime timestamp, final UUID id, final String description, final TicketStatus status,
+			final TicketSeverity severity, final UUID submittedBy, final UUID assignedTo) {
+		this.timestamp = timestamp;
 		this.id = id;
 		this.description = description;
 		this.status = status;
@@ -21,8 +26,17 @@ public class Ticket {
 		this.assignedTo = assignedTo;
 	}
 
+	public Ticket(final UUID id, final String description, final TicketStatus status, final TicketSeverity severity,
+			final UUID submittedBy, final UUID assignedTo) {
+		this(ZonedDateTime.now(ZoneId.systemDefault()), id, description, status, severity, submittedBy, assignedTo);
+	}
+
 	public Ticket(final String description, final TicketSeverity severity, final UUID submittedBy) {
 		this(UUID.randomUUID(), description, TicketStatus.OPEN, severity, submittedBy, null);
+	}
+
+	public ZonedDateTime getTimestamp() {
+		return timestamp;
 	}
 
 	public UUID getId() {
@@ -62,6 +76,7 @@ public class Ticket {
 	}
 
 	public String toString() {
-		return String.format("[%s, %s, %s, %s, %s, %s]", id, description, severity, status, submittedBy, assignedTo);
+		return String.format("[%s, %s, %s, %s, %s, %s, %s]", timestamp.format(DateTimeFormatter.ISO_DATE_TIME), id,
+				description, status, severity, submittedBy, assignedTo);
 	}
 }

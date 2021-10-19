@@ -27,7 +27,6 @@ public class Main {
 
 	private static final LoginMenu LOGIN_MENU = new LoginMenu();
 	private static final TicketMenu TICKET_MENU = new TicketMenu();	
-	private static final TechnicianMenu TECNICIAN_MENU = new TechnicianMenu();
 
 	public static MenuOption switchMenu(final MenuOption menu) {
 		switch (menu) {
@@ -35,8 +34,6 @@ public class Main {
 			return LOGIN_MENU.displayMenu();
 		case TICKET:
 			return TICKET_MENU.displayMenu();
-		case TECHNICIAN:
-			return TECNICIAN_MENU.displayMenu();
 		default:
 			System.out.println(String.format("Unknown menu \"%s\", returning to login menu...", menu));
 			return MenuOption.LOGIN;

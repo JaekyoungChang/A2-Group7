@@ -29,29 +29,22 @@ public class LoginMenu {
 			System.out.print("Enter Choice: ");
 			final String choice = io.readLine();
 			switch (choice) {
-			case "1":
-				if (accountManager.login()) {
-
-					if (accountManager.getActiveAccount().getType() == AccountType.STAFF) {
+				case "1":
+					if (accountManager.login()) {
 						return MenuOption.TICKET;
 					}
-
-					else {
-						return MenuOption.TECHNICIAN;
-					}
-				}
-				break;
-			case "2":
-				accountManager.resetPassword();
-				break;
-			case "3":
-				accountManager.createAccount();
-				break;
-			case "4":
-				io.printf("Exiting program...%n%n");
-				System.exit(0);
-			default:
-				io.printf("Invalid choice. Please enter a number from 1-4.%n");
+					break;
+				case "2":
+					accountManager.resetPassword();
+					break;
+				case "3":
+					accountManager.createAccount();
+					break;
+				case "4":
+					io.printf("Exiting program...%n%n");
+					System.exit(0);
+				default:
+					io.printf("Invalid choice. Please enter a number from 1-4.%n");
 			}
 		} catch (
 

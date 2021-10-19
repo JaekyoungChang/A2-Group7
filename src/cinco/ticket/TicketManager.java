@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -19,6 +22,8 @@ import cinco.ticket.ConsoleManager.TextDevice;
 public class TicketManager {
 	private static final Logger LOGGER = Logger.getLogger(TicketManager.class.getName());
 	private static final String TICKETS_FILE_PATH = "data/tickets.csv";
+	private static final String TICKETS_FILE_HEADER = "TIMESTAMP,ID,DESCRIPTION,STATUS,SEVERITY,SUBMITTED_BY,ASSIGNED_TO\n";
+	private static final long TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 	private static final String EXIT_SIGNAL = "x";
 
 	private static TicketManager DEFAULT_TICKET_MANAGER = new TicketManager();;
@@ -42,11 +47,20 @@ public class TicketManager {
 
 	public List<Ticket> getTickets(final Account account) {
 		if (account.getType() == AccountType.STAFF) {
-			return tickets.stream().filter(ticket -> ticket.getSubmittedBy().equals(account.getId()))
+			// can only see open tickets submitted by them
+			return tickets.stream().filter(ticket -> ticket.getStatus() == TicketStatus.OPEN
+					&& ticket.getSubmittedBy().equals(account.getId())).collect(Collectors.toList());
+		} else if (account.getType() == AccountType.TECHNICIAN) {
+			// can only see open tickets assigned to them, and any closed or archived
+			// tickets
+			return tickets.stream().filter(
+					ticket -> ticket.getStatus() != TicketStatus.OPEN || ticket.getAssignedTo().equals(account.getId()))
 					.collect(Collectors.toList());
+		} else {
+			// cannot see any tickets
+			LOGGER.warning(String.format("Unknown account type %s", account.getType()));
+			return Collections.emptyList();
 		}
-		
-		return tickets;
 	}
 
 	public Ticket getTicket(final UUID id) {
@@ -67,18 +81,19 @@ public class TicketManager {
 				// create tickets file
 				Files.createDirectories(Paths.get(TICKETS_FILE_PATH).getParent());
 				Files.createFile(Paths.get(TICKETS_FILE_PATH));
-				Files.write(Paths.get(TICKETS_FILE_PATH),
-						"ID,DESCRIPTION,STATUS,SEVERITY,SUBMITTED_BY,ASSIGNED_TO\n".getBytes(),
-						StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+				Files.write(Paths.get(TICKETS_FILE_PATH), TICKETS_FILE_HEADER.getBytes(), StandardOpenOption.CREATE,
+						StandardOpenOption.APPEND);
 				LOGGER.info("Created tickets file");
 			} else {
 				// load tickets from tickets file
 				try (final Stream<String> stream = Files.lines(Paths.get(TICKETS_FILE_PATH)).skip(1)) {
 					stream.forEach(line -> {
 						final String[] fields = line.split(",");
-						final Ticket ticket = new Ticket(UUID.fromString(fields[0]), fields[1],
-								TicketStatus.valueOf(fields[2]), TicketSeverity.valueOf(fields[3]),
-								UUID.fromString(fields[4]), UUID.fromString(fields[5]));
+						final Ticket ticket = new Ticket(
+								Instant.ofEpochMilli(Long.valueOf(fields[0])).atZone(ZoneId.systemDefault()),
+								UUID.fromString(fields[1]), fields[2], TicketStatus.valueOf(fields[3]),
+								TicketSeverity.valueOf(fields[4]), UUID.fromString(fields[5]),
+								UUID.fromString(fields[6]));
 						tickets.add(ticket);
 					});
 				}
@@ -87,6 +102,130 @@ public class TicketManager {
 		} catch (final IOException e) {
 			e.printStackTrace();
 		}
+
+		// archive any closed tickets greater than 24 hours old
+		List<Ticket> archiveTickets = tickets.stream()
+				.filter(ticket -> ticket.getStatus() == TicketStatus.CLOSED_RESOLVED
+						|| ticket.getStatus() == TicketStatus.CLOSED_UNRESOLVED)
+				.filter(ticket -> Math.abs(
+						Instant.now().getEpochSecond() - ticket.getTimestamp().toEpochSecond()) > TWENTY_FOUR_HOURS)
+				.collect(Collectors.toList());
+		archiveTickets.forEach(ticket -> {			
+			ticket.setStatus(TicketStatus.ARCHIVED);
+			updateTicket(ticket);
+			LOGGER.info(String.format("Archived ticket %s", ticket));
+		});
+	}
+
+	private void addTicket(final Ticket ticket) {
+
+		// check ticket doesn't already exist
+		if (getTicket(ticket.getId()) != null) {
+			LOGGER.info("Cannot add ticket");
+			return;
+		}
+
+		// add ticket to memory
+		tickets.add(ticket);
+
+		// write ticket to tickets file
+		final String ticketString = String.format("%d,%s,%s,%s,%s,%s,%s\n", ticket.getTimestamp().toEpochSecond(),
+				ticket.getId(), ticket.getDescription(), ticket.getStatus(), ticket.getSeverity(),
+				ticket.getSubmittedBy(), ticket.getAssignedTo());
+		try {
+			Files.write(Paths.get(TICKETS_FILE_PATH), ticketString.getBytes(), StandardOpenOption.APPEND);
+		} catch (final IOException e) {
+			e.printStackTrace();
+		}
+		LOGGER.info(String.format("Added ticket %s", ticket));
+	}
+
+	private void updateTicket(final Ticket ticket) {
+
+		// check ticket already exists
+		if (getTicket(ticket.getId()) == null) {
+			LOGGER.info("Cannot update ticket");
+			return;
+		}
+
+		// update ticket in memory
+		Ticket deleteTicket = null;
+		for (final Ticket inMemoryTicket : tickets) {
+			if (ticket.getId().equals(inMemoryTicket.getId())) {
+				deleteTicket = inMemoryTicket;
+			}
+		}
+		if (deleteTicket != null) {
+			tickets.remove(deleteTicket);
+			tickets.add(ticket);
+		}
+
+		// update ticket in tickets file
+		final String updatedTicketString = String.format("%d,%s,%s,%s,%s,%s,%s", ticket.getTimestamp().toEpochSecond(),
+				ticket.getId(), ticket.getDescription(), ticket.getStatus(), ticket.getSeverity(),
+				ticket.getSubmittedBy(), ticket.getAssignedTo());
+		try {
+			try (final Stream<String> stream = Files.lines(Paths.get(TICKETS_FILE_PATH)).skip(1)) {
+				final List<String> updatedTickets = stream.map(line -> {
+					final String[] fields = line.split(",");
+					final Ticket storedTicket = new Ticket(
+							Instant.ofEpochMilli(Long.valueOf(fields[0])).atZone(ZoneId.systemDefault()),
+							UUID.fromString(fields[1]), fields[2], TicketStatus.valueOf(fields[3]),
+							TicketSeverity.valueOf(fields[4]), UUID.fromString(fields[5]), UUID.fromString(fields[6]));
+					return storedTicket.getId().equals(ticket.getId()) ? updatedTicketString : line;
+				}).collect(Collectors.toList());
+				Files.write(Paths.get(TICKETS_FILE_PATH), TICKETS_FILE_HEADER.getBytes());
+				Files.write(Paths.get(TICKETS_FILE_PATH), updatedTickets, StandardOpenOption.APPEND);
+			}
+		} catch (final IOException e) {
+			e.printStackTrace();
+		}
+		LOGGER.info(String.format("Updated ticket %s", ticket));
+	}
+
+	public void assignTicket(final Ticket ticket) {
+
+		// get eligible technicians
+		final List<Account> eligibleTechnicians = accountManager.getAccounts().stream()
+				.filter(account -> account.getType() == AccountType.TECHNICIAN)
+				.filter(account -> (ticket.getSeverity().getLevel() <= 2 && account.getLevel().getLevel() == 1)
+						|| (ticket.getSeverity().getLevel() == 3 && account.getLevel().getLevel() == 2))
+				.collect(Collectors.toList());
+
+		// assign technician if required
+		if (ticket.getAssignedTo() == null
+				|| !eligibleTechnicians.contains(accountManager.getAccount(ticket.getAssignedTo()))) {
+			final Account assignedTechnician = eligibleTechnicians.stream()
+					.min(Comparator.comparing(account -> getTickets(account).size()))
+					.orElseThrow(NoSuchElementException::new);
+			ticket.setAssignedTo(assignedTechnician.getId());
+			LOGGER.info(String.format("Assigned ticket %s", ticket));
+		}
+	}
+
+	private boolean validateId(final String id) {
+
+		// check id is not empty
+		if (id.isEmpty()) {
+			LOGGER.warning("Invalid ticket ID! Must not be empty.");
+			return false;
+		}
+
+		// check the is is a valid uuid
+		try {
+			UUID.fromString(id);
+		} catch (final IllegalArgumentException e) {
+			LOGGER.warning("Invalid ticket ID! Not a valid UUID.");
+			return false;
+		}
+
+		// check id corresponds to a real ticket
+		if (getTicket(UUID.fromString(id)) == null) {
+			LOGGER.warning("Invalid ticket ID! There is no ticket with that ID.");
+			return false;
+		}
+
+		return true;
 	}
 
 	private boolean validateDescription(final String description) {
@@ -108,7 +247,7 @@ public class TicketManager {
 			return false;
 		}
 
-		// check severity is in range
+		// check severity level is in range
 		if (Integer.valueOf(severity) < 1 || Integer.valueOf(severity) > 3) {
 			LOGGER.warning("Invalid severity level! Must enter a severity level between 1 and 3.");
 			return false;
@@ -117,37 +256,22 @@ public class TicketManager {
 		return true;
 	}
 
-	public void assignTicket(final Ticket ticket) {
+	private boolean validateStatus(final String status) {
 
-		// check ticket
-		if (getTicket(ticket.getId()) != null) {
-			LOGGER.info("Cannot add ticket");
-			return;
+		// check status is not empty
+		if (status.isEmpty()) {
+			LOGGER.warning("Invalid status! Must not be empty.");
+			return false;
 		}
 
-		// assign technician
-		final List<Account> elligableTechnicians = accountManager.getAccounts().stream()
-				.filter(account -> account.getType() == AccountType.TECHNICIAN)
-				.filter(account -> (ticket.getSeverity().getLevel() <= 2 && account.getLevel().getLevel() == 1)
-						|| (ticket.getSeverity().getLevel() == 3 && account.getLevel().getLevel() == 2))
-				.collect(Collectors.toList());
-		final Account assignedTechnician = elligableTechnicians.stream()
-				.min(Comparator.comparing(account -> getTickets(account).size()))
-				.orElseThrow(NoSuchElementException::new);
-		ticket.setAssignedTo(assignedTechnician.getId());
+		// check status code is in range
+		else if (Integer.parseInt(status) < 1 || Integer.parseInt(status) > 4) {
+			LOGGER.warning("Invalid status! Must enter a status code between 1 and 4.");
+			return false;
 
-		// add ticket to memory
-		tickets.add(ticket);
-
-		// write ticket to tickets file
-		final String ticketString = String.format("%s,%s,%s,%s,%s,%s\n", ticket.getId(), ticket.getDescription(),
-				ticket.getStatus(), ticket.getSeverity(), ticket.getSubmittedBy(), ticket.getAssignedTo());
-		try {
-			Files.write(Paths.get(TICKETS_FILE_PATH), ticketString.getBytes(), StandardOpenOption.APPEND);
-			LOGGER.info(String.format("Added ticket %s to tickets file", ticket));
-		} catch (final IOException e) {
-			e.printStackTrace();
 		}
+
+		return true;
 	}
 
 	public boolean listTickets() {
@@ -162,6 +286,7 @@ public class TicketManager {
 			if (accountTickets.size() > 0) {
 				io.printf("Here are your tickets:%n%n");
 				for (final Ticket ticket : accountTickets) {
+					io.printf("Timestamp:    %s%n", ticket.getTimestamp());
 					io.printf("ID:           %s%n", ticket.getId());
 					io.printf("Description:  %s%n", ticket.getDescription());
 					io.printf("Status:       %s%n", ticket.getStatus().name());
@@ -185,8 +310,7 @@ public class TicketManager {
 
 		try {
 			io.printf("%n*** SUBMIT TICKET ***%n");
-			io.printf(String.format("type \"%s\" to return to the previous menu%n", EXIT_SIGNAL));
-			io.printf("%n");
+			io.printf(String.format("type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL));
 
 			String description = null;
 			while (true) {
@@ -201,7 +325,12 @@ public class TicketManager {
 
 			String severity = null;
 			while (true) {
-				io.printf("Enter ticket severity level (1-3): ");
+				io.printf("1. Low%n");
+				io.printf("2. Medium%n");
+				io.printf("3. High%n");
+				io.printf("%n");
+
+				io.printf("Enter ticket severity level from the list above: ");
 				severity = io.readLine();
 				if (severity.equals(EXIT_SIGNAL)) {
 					return false;
@@ -210,9 +339,11 @@ public class TicketManager {
 				}
 			}
 
-			assignTicket(new Ticket(description, TicketSeverity.valueOf(Integer.valueOf(severity)),
-					accountManager.getActiveAccount().getId()));
+			final Ticket ticket = new Ticket(description, TicketSeverity.valueOf(Integer.valueOf(severity)),
+					accountManager.getActiveAccount().getId());
+			assignTicket(ticket);
 
+			addTicket(ticket);
 			io.printf("Ticket submitted.%n%n");
 		} catch (final ConsoleException e) {
 			e.printStackTrace();
@@ -225,47 +356,49 @@ public class TicketManager {
 		final TextDevice io = ConsoleManager.defaultTextDevice();
 
 		try {
-			io.printf("%n*** CHANGE TICKET STATUS ***%n");
-			io.printf(String.format("type \"%s\" to return to the previous menu%n", EXIT_SIGNAL));
-			io.printf("%n");
+			io.printf("%n*** UPDATE TICKET STATUS ***%n");
+			io.printf(String.format("type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL));
 
-			List<Ticket> accountTickets = getTickets(accountManager.getActiveAccount());
-			accountTickets = tickets.stream().filter(ticket -> ticket.getAssignedTo().equals(accountManager.getActiveAccount().getId()))
-					.collect(Collectors.toList());
-			
-			Ticket selectedTicket = null;
-			String id = null;
-
+			final List<Ticket> accountTickets = getTickets(accountManager.getActiveAccount());
 			if (accountTickets.size() > 0) {
-
-				while (selectedTicket == null) {
-
+				String id = null;
+				while (true) {
 					for (final Ticket ticket : accountTickets) {
+						io.printf("Timestamp:    %s%n", ticket.getTimestamp());
 						io.printf("ID:           %s%n", ticket.getId());
 						io.printf("Description:  %s%n", ticket.getDescription());
 						io.printf("Status:       %s%n", ticket.getStatus().name());
 						io.printf("Severity:     %s%n", ticket.getSeverity().name());
 						io.printf("Submitted By: %s%n", accountManager.getAccount(ticket.getSubmittedBy()).getName());
+						io.printf("Assigned To:  %s%n", accountManager.getAccount(ticket.getAssignedTo()).getName());
 						io.printf("%n");
 					}
 
 					io.printf("Enter ticket ID from the list above: ");
 					id = io.readLine();
-					selectedTicket = getTicket(UUID.fromString(id));
+					if (id.equals(EXIT_SIGNAL)) {
+						return false;
+					} else if (validateId(id)) {
+						break;
+					}
+				}
+
+				final Ticket ticket = getTicket(UUID.fromString(id));
+				if (ticket.getStatus() == TicketStatus.ARCHIVED) {
+					io.printf("You cannot update archived tickets.%n%n");
+					return false;
 				}
 
 				String status = null;
 				while (true) {
-
-					io.printf("1. OPEN%n");
-					io.printf("2. CLOSED RESOLVED%n");
-					io.printf("3. CLOSED UNRESOLVED%n");
-					io.printf("4. ARCHIVED%n");
+					io.printf("1. Open%n");
+					io.printf("2. Closed (Resolved)%n");
+					io.printf("3. Closed (Unresolved)%n");
+					io.printf("4. Archived%n");
 					io.printf("%n");
 
 					io.printf("Select a ticket status from the list above: ");
 					status = io.readLine();
-
 					if (status.equals(EXIT_SIGNAL)) {
 						return false;
 					} else if (validateStatus(status)) {
@@ -273,33 +406,15 @@ public class TicketManager {
 					}
 				}
 
-				selectedTicket.setStatus(TicketStatus.values()[Integer.parseInt(status) - 1]);
-				io.printf("Ticket status changed");
-				io.printf("%n%n");
-
+				ticket.setStatus(TicketStatus.valueOf(Integer.valueOf(status)));
+				updateTicket(ticket);
+				io.printf("Ticket status updated.%n%n");
 			} else {
-				io.printf("You have no tickets%n%n");
+				io.printf("You have no tickets.%n%n");
+				return false;
 			}
 		} catch (final ConsoleException e) {
 			e.printStackTrace();
-		}
-
-		return true;
-	}
-
-	private boolean validateStatus(String status) {
-
-		// check status selection is not empty
-		if (status.isEmpty()) {
-			LOGGER.warning("Invalid status selection! Must not be empty.");
-			return false;
-		}
-
-		// check status selection is in range
-		else if (Integer.parseInt(status) < 1 || Integer.parseInt(status) > 4) {
-			LOGGER.warning("Invalid status selection! Must enter a selection between 1 and 4.");
-			return false;
-
 		}
 
 		return true;
@@ -309,38 +424,47 @@ public class TicketManager {
 		final TextDevice io = ConsoleManager.defaultTextDevice();
 
 		try {
-			io.printf("%n*** CHANGE TICKET SEVERITY ***%n");
-			io.printf(String.format("type \"%s\" to return to the previous menu%n", EXIT_SIGNAL));
-			io.printf("%n");
+			io.printf("%n*** UPDATE TICKET SEVERITY ***%n");
+			io.printf(String.format("type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL));
 
 			List<Ticket> accountTickets = getTickets(accountManager.getActiveAccount());
-			accountTickets = tickets.stream().filter(ticket -> ticket.getAssignedTo().equals(accountManager.getActiveAccount().getId()))
-					.collect(Collectors.toList());
-		
-			Ticket selectedTicket = null;
-			String id = null;
-
 			if (accountTickets.size() > 0) {
-
-				while (selectedTicket == null) {
-
+				String id = null;
+				while (true) {
 					for (final Ticket ticket : accountTickets) {
+						io.printf("Timestamp:    %s%n", ticket.getTimestamp());
 						io.printf("ID:           %s%n", ticket.getId());
 						io.printf("Description:  %s%n", ticket.getDescription());
 						io.printf("Status:       %s%n", ticket.getStatus().name());
 						io.printf("Severity:     %s%n", ticket.getSeverity().name());
 						io.printf("Submitted By: %s%n", accountManager.getAccount(ticket.getSubmittedBy()).getName());
+						io.printf("Assigned To:  %s%n", accountManager.getAccount(ticket.getAssignedTo()).getName());
 						io.printf("%n");
 					}
 
 					io.printf("Enter ticket ID from the list above: ");
 					id = io.readLine();
-					selectedTicket = getTicket(UUID.fromString(id));
+					if (id.equals(EXIT_SIGNAL)) {
+						return false;
+					} else if (validateId(id)) {
+						break;
+					}
+				}
+
+				final Ticket ticket = getTicket(UUID.fromString(id));
+				if (ticket.getStatus() == TicketStatus.ARCHIVED) {
+					io.printf("You cannot update archived tickets.%n%n");
+					return false;
 				}
 
 				String severity = null;
 				while (true) {
-					io.printf("Enter ticket severity level (1-3): ");
+					io.printf("1. Low%n");
+					io.printf("2. Medium%n");
+					io.printf("3. High%n");
+					io.printf("%n");
+
+					io.printf("Enter ticket severity level from the list above: ");
 					severity = io.readLine();
 					if (severity.equals(EXIT_SIGNAL)) {
 						return false;
@@ -349,39 +473,18 @@ public class TicketManager {
 					}
 				}
 
-				if (selectedTicket.getSeverity() == TicketSeverity.HIGH
-						|| TicketSeverity.valueOf(Integer.valueOf(severity)) == TicketSeverity.HIGH) {
-					selectedTicket.setSeverity(TicketSeverity.valueOf(Integer.valueOf(severity)));
-					reassignTicket(selectedTicket);
-				} else {
-					selectedTicket.setSeverity(TicketSeverity.valueOf(Integer.valueOf(severity)));
-				}
-
-				io.printf("Ticket status changed");
-				io.printf("%n%n");
-
+				ticket.setSeverity(TicketSeverity.valueOf(Integer.valueOf(severity)));
+				assignTicket(ticket);
+				updateTicket(ticket);
+				io.printf("Ticket severity updated.%n%n");
 			} else {
-				io.printf("You have no tickets%n%n");
+				io.printf("You have no tickets.%n%n");
+				return false;
 			}
 		} catch (final ConsoleException e) {
 			e.printStackTrace();
 		}
 
 		return true;
-	}
-	
-	public void reassignTicket(final Ticket ticket) {
-
-		// assign new technician
-		final List<Account> elligableTechnicians = accountManager.getAccounts().stream()
-				.filter(account -> account.getType() == AccountType.TECHNICIAN)
-				.filter(account -> (ticket.getSeverity().getLevel() <= 2 && account.getLevel().getLevel() == 1)
-						|| (ticket.getSeverity().getLevel() == 3 && account.getLevel().getLevel() == 2))
-				.collect(Collectors.toList());
-		final Account assignedTechnician = elligableTechnicians.stream()
-				.min(Comparator.comparing(account -> getTickets(account).size()))
-				.orElseThrow(NoSuchElementException::new);
-		ticket.setAssignedTo(assignedTechnician.getId());
-
 	}
 }

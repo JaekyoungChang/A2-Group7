@@ -86,8 +86,7 @@ public class AccountManager {
 					stream.forEach(line -> {
 						final String[] fields = line.split(",");
 						final Account account = new Account(UUID.fromString(fields[0]), AccountType.valueOf(fields[1]),
-								AccountLevel.valueOf(Integer.valueOf(fields[2])), fields[3], fields[4], fields[5],
-								fields[6]);
+								AccountLevel.valueOf(fields[2]), fields[3], fields[4], fields[5], fields[6]);
 						accounts.add(account);
 					});
 				}
@@ -129,7 +128,7 @@ public class AccountManager {
 	private void addAccount(final Account account) {
 
 		// check account
-		if (getAccount(account.getName()) != null) {
+		if (getAccount(account.getId()) != null) {
 			LOGGER.info("Cannot add account");
 			return;
 		}
@@ -139,8 +138,7 @@ public class AccountManager {
 
 		// write account to accounts file
 		final String accountString = String.format("%s,%s,%s,%s,%s,%s,%s\n", account.getId(), account.getType(),
-				account.getLevel().getLevel(), account.getName(), account.getEmail(), account.getPhone(),
-				account.getPassword());
+				account.getLevel(), account.getName(), account.getEmail(), account.getPhone(), account.getPassword());
 		try {
 			Files.write(Paths.get(ACCOUNTS_FILE_PATH), accountString.getBytes(), StandardOpenOption.APPEND);
 			LOGGER.info(String.format("Added account %s to accounts file", account));
@@ -152,7 +150,7 @@ public class AccountManager {
 	private void updateAccount(final Account account) {
 
 		// check account
-		if (getAccount(account.getName()) == null) {
+		if (getAccount(account.getId()) == null) {
 			LOGGER.info("Cannot update account");
 			return;
 		}
@@ -160,7 +158,7 @@ public class AccountManager {
 		// update account in memory
 		Account deleteAccount = null;
 		for (final Account inMemoryAccount : accounts) {
-			if (account.getName().equals(inMemoryAccount.getName())) {
+			if (account.getId().equals(inMemoryAccount.getId())) {
 				deleteAccount = inMemoryAccount;
 			}
 		}
@@ -171,9 +169,8 @@ public class AccountManager {
 
 		// update account in accounts file
 		final String accountsHeader = "ID,TYPE,LEVEL,NAME,EMAIL,PHONE,PASSWORD\n";
-		final String accountString = String.format("%s,%s,%s,%s,%s,%s,%s", account.getId(), account.getType(),
-				account.getLevel().getLevel(), account.getName(), account.getEmail(), account.getPhone(),
-				account.getPassword());
+		final String updatedAccountString = String.format("%s,%s,%s,%s,%s,%s,%s", account.getId(), account.getType(),
+				account.getLevel(), account.getName(), account.getEmail(), account.getPhone(), account.getPassword());
 		try {
 			try (final Stream<String> stream = Files.lines(Paths.get(ACCOUNTS_FILE_PATH)).skip(1)) {
 				final List<String> updatedAccounts = stream.map(line -> {
@@ -181,7 +178,7 @@ public class AccountManager {
 					final Account storedAccount = new Account(UUID.fromString(fields[0]),
 							AccountType.valueOf(fields[1]), AccountLevel.valueOf(fields[2]), fields[3], fields[4],
 							fields[5], fields[6]);
-					return storedAccount.getName().equals(account.getName()) ? accountString : line;
+					return storedAccount.getId().equals(account.getId()) ? updatedAccountString : line;
 				}).collect(Collectors.toList());
 				Files.write(Paths.get(ACCOUNTS_FILE_PATH), accountsHeader.getBytes());
 				Files.write(Paths.get(ACCOUNTS_FILE_PATH), updatedAccounts, StandardOpenOption.APPEND);
@@ -307,8 +304,7 @@ public class AccountManager {
 
 		try {
 			io.printf("%n*** LOGIN ***%n");
-			io.printf("Type \"%s\" to return to the previous menu%n", EXIT_SIGNAL);
-			io.printf("%n");
+			io.printf("Type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL);
 
 			String name = null;
 			while (true) {
@@ -352,8 +348,7 @@ public class AccountManager {
 
 		try {
 			io.printf("%n*** RESET PASSWORD ***%n");
-			io.printf(String.format("type \"%s\" to return to the previous menu%n", EXIT_SIGNAL));
-			io.printf("%n");
+			io.printf(String.format("type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL));
 
 			String name = null;
 			while (true) {
@@ -396,8 +391,7 @@ public class AccountManager {
 
 		try {
 			io.printf("%n*** CREATE ACCOUNT ***%n");
-			io.printf(String.format("type \"%s\" to return to the previous menu%n", EXIT_SIGNAL));
-			io.printf("%n");
+			io.printf(String.format("type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL));
 
 			String name = null;
 			while (true) {
