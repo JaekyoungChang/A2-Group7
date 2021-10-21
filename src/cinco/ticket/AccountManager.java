@@ -317,6 +317,7 @@ public class AccountManager {
 				} else {
 					break;
 				}
+				io.printf("Type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL);
 			}
 			final Account account = getAccount(name);
 
@@ -327,7 +328,7 @@ public class AccountManager {
 				if (password.equals(EXIT_SIGNAL)) {
 					return false;
 				} else if (!password.equals(account.getPassword())) {
-					LOGGER.warning("Invalid password! try again...");
+					LOGGER.warning("Invalid password, try again...");
 				} else {
 					break;
 				}
