@@ -281,8 +281,8 @@ public class TicketManager {
 		}
 
 		// check status code is in range
-		else if (Integer.parseInt(status) < 1 || Integer.parseInt(status) > 4) {
-			LOGGER.warning("Invalid status! Must enter a status code between 1 and 4.");
+		else if (Integer.parseInt(status) < 1 || Integer.parseInt(status) > 3) {
+			LOGGER.warning("Invalid status! Must enter a status code between 1 and 3.");
 			return false;
 		}
 
