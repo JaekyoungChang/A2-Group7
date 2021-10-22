@@ -34,10 +34,10 @@ public class TicketMenu {
 					io.printf("3. Logout%n");
 					io.printf("4. Exit%n");
 					io.printf("%n");
-					
+	
 					System.out.print("Enter Choice: ");
 					final String staffChoice = io.readLine();
-					
+	
 					switch (staffChoice) {
 						case "1":
 							ticketManager.listTickets();
@@ -53,19 +53,20 @@ public class TicketMenu {
 							System.exit(0);
 						default:
 							io.printf("Invalid choice. Please enter a number from 1-4.%n");
-					}
-					break;
+						}
+						break;
 				case TECHNICIAN:
 					io.printf("1. List Tickets%n");
 					io.printf("2. Update Ticket Status%n");
 					io.printf("3. Update Ticket Severity%n");
-					io.printf("4. Logout%n");
-					io.printf("5. Exit%n");
+					io.printf("4. Generate Report%n");
+					io.printf("5. Logout%n");
+					io.printf("6. Exit%n");
 					io.printf("%n");
-					
+	
 					System.out.print("Enter Choice: ");
 					final String technicianChoice = io.readLine();
-					
+	
 					switch (technicianChoice) {
 						case "1":
 							ticketManager.listTickets();
@@ -77,15 +78,18 @@ public class TicketMenu {
 							ticketManager.changeTicketSeverity();
 							break;
 						case "4":
+							ticketManager.generateReport();
+							break;
+						case "5":
 							io.printf("Logging out...%n%n");
 							return MenuOption.LOGIN;
-						case "5":
+						case "6":
 							io.printf("Exiting program...%n%n");
 							System.exit(0);
 						default:
-							io.printf("Invalid choice. Please enter a number from 1-5.%n");
-					}
-					break;
+							io.printf("Invalid choice. Please enter a number from 1-6.%n");
+						}
+						break;
 				default:
 					io.printf("Unknown account type %s, returning to login menu.%n", accountType);
 					return MenuOption.LOGIN;

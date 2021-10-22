@@ -6,6 +6,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -22,8 +25,11 @@ import cinco.ticket.ConsoleManager.TextDevice;
 public class TicketManager {
 	private static final Logger LOGGER = Logger.getLogger(TicketManager.class.getName());
 	private static final String TICKETS_FILE_PATH = "data/tickets.csv";
-	private static final String TICKETS_FILE_HEADER = "TIMESTAMP,ID,DESCRIPTION,STATUS,SEVERITY,SUBMITTED_BY,ASSIGNED_TO\n";
-	private static final long TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+	private static final String TICKETS_FILE_HEADER = "ID,DESCRIPTION,STATUS,SEVERITY,SUBMITTED_BY,ASSIGNED_TO,CREATED,UPDATED\n";
+	private static final long TWENTY_FOUR_HOURS = 1 * 24 * 60 * 60;
+	private static final long FORTY_EIGHT_HOURS = 2 * 24 * 60 * 60;
+	private static final long ONE_WEEK = 7 * 24 * 60 * 60;
+	private static final long ONE_FORTNIGHT = 14 * 24 * 60 * 60;
 	private static final String EXIT_SIGNAL = "x";
 
 	private static TicketManager DEFAULT_TICKET_MANAGER = new TicketManager();;
@@ -89,11 +95,15 @@ public class TicketManager {
 				try (final Stream<String> stream = Files.lines(Paths.get(TICKETS_FILE_PATH)).skip(1)) {
 					stream.forEach(line -> {
 						final String[] fields = line.split(",");
-						final Ticket ticket = new Ticket(
-								Instant.ofEpochMilli(Long.valueOf(fields[0])).atZone(ZoneId.systemDefault()),
-								UUID.fromString(fields[1]), fields[2], TicketStatus.valueOf(fields[3]),
-								TicketSeverity.valueOf(fields[4]), UUID.fromString(fields[5]),
-								UUID.fromString(fields[6]));
+						final Ticket ticket = new Ticket(UUID.fromString(fields[0]), fields[1],
+								TicketStatus.valueOf(fields[2]), TicketSeverity.valueOf(fields[3]),
+								UUID.fromString(fields[4]), UUID.fromString(fields[5]),
+								!"null".equals(fields[6])
+										? Instant.ofEpochSecond(Long.valueOf(fields[6])).atZone(ZoneId.systemDefault())
+										: null,
+								!"null".equals(fields[7])
+										? Instant.ofEpochSecond(Long.valueOf(fields[7])).atZone(ZoneId.systemDefault())
+										: null);
 						tickets.add(ticket);
 					});
 				}
@@ -103,14 +113,14 @@ public class TicketManager {
 			e.printStackTrace();
 		}
 
-		// archive any closed tickets greater than 24 hours old
+		// archive any closed tickets last updated more than 24 hours ago
 		List<Ticket> archiveTickets = tickets.stream()
 				.filter(ticket -> ticket.getStatus() == TicketStatus.CLOSED_RESOLVED
 						|| ticket.getStatus() == TicketStatus.CLOSED_UNRESOLVED)
-				.filter(ticket -> Math.abs(
-						Instant.now().getEpochSecond() - ticket.getTimestamp().toEpochSecond()) > TWENTY_FOUR_HOURS)
+				.filter(ticket -> ticket.getUpdated() != null && Math
+						.abs(Instant.now().getEpochSecond() - ticket.getUpdated().toEpochSecond()) > TWENTY_FOUR_HOURS)
 				.collect(Collectors.toList());
-		archiveTickets.forEach(ticket -> {			
+		archiveTickets.forEach(ticket -> {
 			ticket.setStatus(TicketStatus.ARCHIVED);
 			updateTicket(ticket);
 			LOGGER.info(String.format("Archived ticket %s", ticket));
@@ -129,9 +139,10 @@ public class TicketManager {
 		tickets.add(ticket);
 
 		// write ticket to tickets file
-		final String ticketString = String.format("%d,%s,%s,%s,%s,%s,%s\n", ticket.getTimestamp().toEpochSecond(),
-				ticket.getId(), ticket.getDescription(), ticket.getStatus(), ticket.getSeverity(),
-				ticket.getSubmittedBy(), ticket.getAssignedTo());
+		final String ticketString = String.format("%s,%s,%s,%s,%s,%s,%d,%d\n", ticket.getId(), ticket.getDescription(),
+				ticket.getStatus(), ticket.getSeverity(), ticket.getSubmittedBy(), ticket.getAssignedTo(),
+				ticket.getCreated() != null ? ticket.getCreated().toEpochSecond() : null,
+				ticket.getUpdated() != null ? ticket.getUpdated().toEpochSecond() : null);
 		try {
 			Files.write(Paths.get(TICKETS_FILE_PATH), ticketString.getBytes(), StandardOpenOption.APPEND);
 		} catch (final IOException e) {
@@ -161,17 +172,22 @@ public class TicketManager {
 		}
 
 		// update ticket in tickets file
-		final String updatedTicketString = String.format("%d,%s,%s,%s,%s,%s,%s", ticket.getTimestamp().toEpochSecond(),
-				ticket.getId(), ticket.getDescription(), ticket.getStatus(), ticket.getSeverity(),
-				ticket.getSubmittedBy(), ticket.getAssignedTo());
+		final String updatedTicketString = String.format("%s,%s,%s,%s,%s,%s,%d,%d", ticket.getId(),
+				ticket.getDescription(), ticket.getStatus(), ticket.getSeverity(), ticket.getSubmittedBy(),
+				ticket.getAssignedTo(), ticket.getCreated().toEpochSecond(), ticket.getUpdated().toEpochSecond());
 		try {
 			try (final Stream<String> stream = Files.lines(Paths.get(TICKETS_FILE_PATH)).skip(1)) {
 				final List<String> updatedTickets = stream.map(line -> {
 					final String[] fields = line.split(",");
-					final Ticket storedTicket = new Ticket(
-							Instant.ofEpochMilli(Long.valueOf(fields[0])).atZone(ZoneId.systemDefault()),
-							UUID.fromString(fields[1]), fields[2], TicketStatus.valueOf(fields[3]),
-							TicketSeverity.valueOf(fields[4]), UUID.fromString(fields[5]), UUID.fromString(fields[6]));
+					final Ticket storedTicket = new Ticket(UUID.fromString(fields[0]), fields[1],
+							TicketStatus.valueOf(fields[2]), TicketSeverity.valueOf(fields[3]),
+							UUID.fromString(fields[4]), UUID.fromString(fields[5]),
+							!"null".equals(fields[6])
+									? Instant.ofEpochSecond(Long.valueOf(fields[6])).atZone(ZoneId.systemDefault())
+									: null,
+							!"null".equals(fields[7])
+									? Instant.ofEpochSecond(Long.valueOf(fields[7])).atZone(ZoneId.systemDefault())
+									: null);
 					return storedTicket.getId().equals(ticket.getId()) ? updatedTicketString : line;
 				}).collect(Collectors.toList());
 				Files.write(Paths.get(TICKETS_FILE_PATH), TICKETS_FILE_HEADER.getBytes());
@@ -268,7 +284,23 @@ public class TicketManager {
 		else if (Integer.parseInt(status) < 1 || Integer.parseInt(status) > 4) {
 			LOGGER.warning("Invalid status! Must enter a status code between 1 and 4.");
 			return false;
+		}
 
+		return true;
+	}
+
+	private boolean validatePeriod(final String period) {
+
+		// check period is not empty
+		if (period.isEmpty()) {
+			LOGGER.warning("Invalid period! Must not be empty.");
+			return false;
+		}
+
+		// check period choice is in range
+		else if (Integer.parseInt(period) < 1 || Integer.parseInt(period) > 4) {
+			LOGGER.warning("Invalid period! Must enter a period choice between 1 and 4.");
+			return false;
 		}
 
 		return true;
@@ -286,13 +318,18 @@ public class TicketManager {
 			if (accountTickets.size() > 0) {
 				io.printf("Here are your tickets:%n%n");
 				for (final Ticket ticket : accountTickets) {
-					io.printf("Timestamp:    %s%n", ticket.getTimestamp());
 					io.printf("ID:           %s%n", ticket.getId());
 					io.printf("Description:  %s%n", ticket.getDescription());
 					io.printf("Status:       %s%n", ticket.getStatus().name());
 					io.printf("Severity:     %s%n", ticket.getSeverity().name());
 					io.printf("Submitted By: %s%n", accountManager.getAccount(ticket.getSubmittedBy()).getName());
 					io.printf("Assigned To:  %s%n", accountManager.getAccount(ticket.getAssignedTo()).getName());
+					io.printf("Created:      %s%n",
+							ticket.getCreated() != null ? ticket.getCreated().format(DateTimeFormatter.ISO_DATE_TIME)
+									: "null");
+					io.printf("Updated:      %s%n",
+							ticket.getUpdated() != null ? ticket.getUpdated().format(DateTimeFormatter.ISO_DATE_TIME)
+									: "null");
 					io.printf("%n");
 				}
 			} else {
@@ -364,13 +401,20 @@ public class TicketManager {
 				String id = null;
 				while (true) {
 					for (final Ticket ticket : accountTickets) {
-						io.printf("Timestamp:    %s%n", ticket.getTimestamp());
 						io.printf("ID:           %s%n", ticket.getId());
 						io.printf("Description:  %s%n", ticket.getDescription());
 						io.printf("Status:       %s%n", ticket.getStatus().name());
 						io.printf("Severity:     %s%n", ticket.getSeverity().name());
 						io.printf("Submitted By: %s%n", accountManager.getAccount(ticket.getSubmittedBy()).getName());
 						io.printf("Assigned To:  %s%n", accountManager.getAccount(ticket.getAssignedTo()).getName());
+						io.printf("Created:      %s%n",
+								ticket.getCreated() != null
+										? ticket.getCreated().format(DateTimeFormatter.ISO_DATE_TIME)
+										: "null");
+						io.printf("Updated:      %s%n",
+								ticket.getUpdated() != null
+										? ticket.getUpdated().format(DateTimeFormatter.ISO_DATE_TIME)
+										: "null");
 						io.printf("%n");
 					}
 
@@ -394,7 +438,6 @@ public class TicketManager {
 					io.printf("1. Open%n");
 					io.printf("2. Closed (Resolved)%n");
 					io.printf("3. Closed (Unresolved)%n");
-					io.printf("4. Archived%n");
 					io.printf("%n");
 
 					io.printf("Select a ticket status from the list above: ");
@@ -407,6 +450,7 @@ public class TicketManager {
 				}
 
 				ticket.setStatus(TicketStatus.valueOf(Integer.valueOf(status)));
+				ticket.setUpdated(ZonedDateTime.now());
 				updateTicket(ticket);
 				io.printf("Ticket status updated.%n%n");
 			} else {
@@ -432,13 +476,20 @@ public class TicketManager {
 				String id = null;
 				while (true) {
 					for (final Ticket ticket : accountTickets) {
-						io.printf("Timestamp:    %s%n", ticket.getTimestamp());
 						io.printf("ID:           %s%n", ticket.getId());
 						io.printf("Description:  %s%n", ticket.getDescription());
 						io.printf("Status:       %s%n", ticket.getStatus().name());
 						io.printf("Severity:     %s%n", ticket.getSeverity().name());
 						io.printf("Submitted By: %s%n", accountManager.getAccount(ticket.getSubmittedBy()).getName());
 						io.printf("Assigned To:  %s%n", accountManager.getAccount(ticket.getAssignedTo()).getName());
+						io.printf("Created:      %s%n",
+								ticket.getCreated() != null
+										? ticket.getCreated().format(DateTimeFormatter.ISO_DATE_TIME)
+										: "null");
+						io.printf("Updated:      %s%n",
+								ticket.getUpdated() != null
+										? ticket.getUpdated().format(DateTimeFormatter.ISO_DATE_TIME)
+										: "null");
 						io.printf("%n");
 					}
 
@@ -474,6 +525,7 @@ public class TicketManager {
 				}
 
 				ticket.setSeverity(TicketSeverity.valueOf(Integer.valueOf(severity)));
+				ticket.setUpdated(ZonedDateTime.now());
 				assignTicket(ticket);
 				updateTicket(ticket);
 				io.printf("Ticket severity updated.%n%n");
@@ -481,6 +533,85 @@ public class TicketManager {
 				io.printf("You have no tickets.%n%n");
 				return false;
 			}
+		} catch (final ConsoleException e) {
+			e.printStackTrace();
+		}
+
+		return true;
+	}
+
+	public boolean generateReport() {
+		final TextDevice io = ConsoleManager.defaultTextDevice();
+
+		try {
+			io.printf("%n*** GENERATE REPORT ***%n");
+			io.printf(String.format("type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL));
+
+			String period = null;
+			while (true) {
+				io.printf("1. 1 Day%n");
+				io.printf("2. 2 Days%n");
+				io.printf("3. 1 Week%n");
+				io.printf("4. 2 Weeks%n");
+				io.printf("%n");
+
+				io.printf("Choose a period for the report from the list above: ");
+				period = io.readLine();
+				if (period.equals(EXIT_SIGNAL)) {
+					return false;
+				} else if (validatePeriod(period)) {
+					break;
+				}
+			}
+
+			final long limit = Integer.valueOf(period) == 1 ? TWENTY_FOUR_HOURS
+					: Integer.valueOf(period) == 1 ? TWENTY_FOUR_HOURS
+							: Integer.valueOf(period) == 2 ? FORTY_EIGHT_HOURS
+									: Integer.valueOf(period) == 3 ? ONE_WEEK : ONE_FORTNIGHT;
+			final Instant end = Instant.now();
+			final Instant start = end.minusSeconds(limit);
+			final List<Ticket> reportTickets = tickets.stream()
+					.filter(ticket -> ticket.getCreated().toEpochSecond() > start.getEpochSecond()
+							&& ticket.getCreated().toEpochSecond() <= end.getEpochSecond())
+					.collect(Collectors.toList());
+			final List<Ticket> resolvedTickets = reportTickets.stream()
+					.filter(ticket -> ticket.getStatus() != TicketStatus.OPEN).collect(Collectors.toList());
+			final List<Ticket> outstandingTickets = reportTickets.stream()
+					.filter(ticket -> ticket.getStatus() == TicketStatus.OPEN).collect(Collectors.toList());
+
+			io.printf("%n");
+			io.printf("Report for period %s - %s%n",
+					start.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_DATE),
+					end.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_DATE));
+			io.printf("-----------%n");
+			io.printf("%n");
+			io.printf("Tickets submitted:    %d%n", reportTickets.size());
+			io.printf("Tickets resolved:     %d%n", resolvedTickets.size());
+			io.printf("Tickets outstanding:  %d%n", outstandingTickets.size());
+			io.printf("%n");
+			io.printf("Resolved Tickets%n");
+			io.printf("-----------%n");
+			io.printf("%-40s%-20s%-20s%-20s%-20s%n", "ID", "CREATED", "SUBMITTED BY", "ASSIGNED TO",
+					"RESOLUTION TIME (DAYS)");
+			for (final Ticket ticket : resolvedTickets) {
+				io.printf("%-40s%-20s%-20s%-20s%-20s%n", ticket.getId().toString(),
+						ticket.getCreated().format(DateTimeFormatter.ISO_DATE),
+						accountManager.getAccount(ticket.getSubmittedBy()).getName(),
+						accountManager.getAccount(ticket.getAssignedTo()).getName(),
+						ChronoUnit.DAYS.between(ticket.getCreated(),
+								ticket.getUpdated() != null ? ticket.getUpdated() : Instant.now()));
+			}
+			;
+			io.printf("%n");
+			io.printf("Outstanding Tickets%n");
+			io.printf("-----------%n");
+			io.printf("%-40s%-20s%-20s%-20s%n", "ID", "CREATED", "SUBMITTED BY", "SEVERITY");
+			for (final Ticket ticket : outstandingTickets) {
+				io.printf("%-40s%-20s%-20s%-20s%n", ticket.getId().toString(),
+						ticket.getCreated().format(DateTimeFormatter.ISO_DATE),
+						accountManager.getAccount(ticket.getSubmittedBy()).getName(), ticket.getSeverity().name());
+			}
+			io.printf("%n");
 		} catch (final ConsoleException e) {
 			e.printStackTrace();
 		}
