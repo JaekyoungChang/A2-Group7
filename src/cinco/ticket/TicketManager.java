@@ -227,12 +227,13 @@ public class TicketManager {
 			return false;
 		}
 
-		// check the is is a valid uuid
+		// check the id is a valid uuid
 		try {
 			UUID.fromString(id);
 		} catch (final IllegalArgumentException e) {
 			LOGGER.warning("Invalid ticket ID! Not a valid UUID.");
 			return false;
+
 		}
 
 		// check id corresponds to a real ticket
@@ -263,9 +264,15 @@ public class TicketManager {
 			return false;
 		}
 
+		// check if severity level is a number
+		else if (!severity.matches("\\d+")) {
+			LOGGER.warning("Invalid severity! Must be a number.");
+			return false;
+		}
+
 		// check severity level is in range
 		if (Integer.valueOf(severity) < 1 || Integer.valueOf(severity) > 3) {
-			LOGGER.warning("Invalid severity level! Must enter a severity level between 1 and 3.");
+			LOGGER.warning("Invalid severity level! Must be between 1 and 3.");
 			return false;
 		}
 
@@ -280,9 +287,15 @@ public class TicketManager {
 			return false;
 		}
 
+		// check if status code is a number
+		else if (!status.matches("\\d+")) {
+			LOGGER.warning("Invalid status! Must be a number.");
+			return false;
+		}
+
 		// check status code is in range
 		else if (Integer.parseInt(status) < 1 || Integer.parseInt(status) > 3) {
-			LOGGER.warning("Invalid status! Must enter a status code between 1 and 3.");
+			LOGGER.warning("Invalid status! Must be between 1 and 3.");
 			return false;
 		}
 
@@ -297,9 +310,15 @@ public class TicketManager {
 			return false;
 		}
 
+		// check if period choice is a number
+		else if (!period.matches("\\d+")) {
+			LOGGER.warning("Invalid period! Must be a number.");
+			return false;
+		}
+
 		// check period choice is in range
 		else if (Integer.parseInt(period) < 1 || Integer.parseInt(period) > 4) {
-			LOGGER.warning("Invalid period! Must enter a period choice between 1 and 4.");
+			LOGGER.warning("Invalid period! Must be between 1 and 4.");
 			return false;
 		}
 
@@ -311,8 +330,7 @@ public class TicketManager {
 
 		try {
 			io.printf("%n*** LIST TICKETS ***%n");
-			io.printf(String.format("type \"%s\" to return to the previous menu%n", EXIT_SIGNAL));
-			io.printf("%n");
+			io.printf(String.format("Type \"%s\" at any time to return to the previous menu%n%n", EXIT_SIGNAL));
 
 			final List<Ticket> accountTickets = getTickets(accountManager.getActiveAccount());
 			if (accountTickets.size() > 0) {
@@ -347,7 +365,7 @@ public class TicketManager {
 
 		try {
 			io.printf("%n*** SUBMIT TICKET ***%n");
-			io.printf(String.format("type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL));
+			io.printf(String.format("Type \"%s\" at any time to return to the previous menu%n%n", EXIT_SIGNAL));
 
 			String description = null;
 			while (true) {
@@ -357,6 +375,9 @@ public class TicketManager {
 					return false;
 				} else if (validateDescription(description)) {
 					break;
+				} else {
+					io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+							EXIT_SIGNAL));
 				}
 			}
 
@@ -373,14 +394,17 @@ public class TicketManager {
 					return false;
 				} else if (validateSeverity(severity)) {
 					break;
+				} else {
+					io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+							EXIT_SIGNAL));
 				}
 			}
 
 			final Ticket ticket = new Ticket(description, TicketSeverity.valueOf(Integer.valueOf(severity)),
 					accountManager.getActiveAccount().getId());
 			assignTicket(ticket);
-
 			addTicket(ticket);
+
 			io.printf("Ticket submitted.%n%n");
 		} catch (final ConsoleException e) {
 			e.printStackTrace();
@@ -394,7 +418,7 @@ public class TicketManager {
 
 		try {
 			io.printf("%n*** UPDATE TICKET STATUS ***%n");
-			io.printf(String.format("type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL));
+			io.printf(String.format("Type \"%s\" at any time to return to the previous menu%n%n", EXIT_SIGNAL));
 
 			final List<Ticket> accountTickets = getTickets(accountManager.getActiveAccount());
 			if (accountTickets.size() > 0) {
@@ -424,6 +448,9 @@ public class TicketManager {
 						return false;
 					} else if (validateId(id)) {
 						break;
+					} else {
+						io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+								EXIT_SIGNAL));
 					}
 				}
 
@@ -446,12 +473,16 @@ public class TicketManager {
 						return false;
 					} else if (validateStatus(status)) {
 						break;
+					} else {
+						io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+								EXIT_SIGNAL));
 					}
 				}
 
 				ticket.setStatus(TicketStatus.valueOf(Integer.valueOf(status)));
 				ticket.setUpdated(ZonedDateTime.now());
 				updateTicket(ticket);
+
 				io.printf("Ticket status updated.%n%n");
 			} else {
 				io.printf("You have no tickets.%n%n");
@@ -469,7 +500,7 @@ public class TicketManager {
 
 		try {
 			io.printf("%n*** UPDATE TICKET SEVERITY ***%n");
-			io.printf(String.format("type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL));
+			io.printf(String.format("Type \"%s\" at any time to return to the previous menu%n%n", EXIT_SIGNAL));
 
 			List<Ticket> accountTickets = getTickets(accountManager.getActiveAccount());
 			if (accountTickets.size() > 0) {
@@ -499,6 +530,9 @@ public class TicketManager {
 						return false;
 					} else if (validateId(id)) {
 						break;
+					} else {
+						io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+								EXIT_SIGNAL));
 					}
 				}
 
@@ -521,6 +555,9 @@ public class TicketManager {
 						return false;
 					} else if (validateSeverity(severity)) {
 						break;
+					} else {
+						io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+								EXIT_SIGNAL));
 					}
 				}
 
@@ -528,6 +565,7 @@ public class TicketManager {
 				ticket.setUpdated(ZonedDateTime.now());
 				assignTicket(ticket);
 				updateTicket(ticket);
+
 				io.printf("Ticket severity updated.%n%n");
 			} else {
 				io.printf("You have no tickets.%n%n");
@@ -545,7 +583,7 @@ public class TicketManager {
 
 		try {
 			io.printf("%n*** GENERATE REPORT ***%n");
-			io.printf(String.format("type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL));
+			io.printf(String.format("Type \"%s\" at any time to return to the previous menu%n%n", EXIT_SIGNAL));
 
 			String period = null;
 			while (true) {
@@ -561,6 +599,9 @@ public class TicketManager {
 					return false;
 				} else if (validatePeriod(period)) {
 					break;
+				} else {
+					io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+							EXIT_SIGNAL));
 				}
 			}
 

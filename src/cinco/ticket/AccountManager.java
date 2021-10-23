@@ -197,6 +197,12 @@ public class AccountManager {
 			return false;
 		}
 
+		// check role is a number
+		else if (!role.matches("\\d+")) {
+			LOGGER.warning("Invalid role! Must be a number.");
+			return false;
+		}
+
 		final AccountType type = getAccountType(role);
 
 		// check role is valid
@@ -259,9 +265,7 @@ public class AccountManager {
 		}
 
 		// check phone number is numeric
-		try {
-			Long.parseLong(phone);
-		} catch (final NumberFormatException e) {
+		else if (!phone.matches("\\d+")) {
 			LOGGER.warning("Invalid phone number! Must contain only numbers.");
 			return false;
 		}
@@ -304,7 +308,7 @@ public class AccountManager {
 
 		try {
 			io.printf("%n*** LOGIN ***%n");
-			io.printf("Type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL);
+			io.printf(String.format("Type \"%s\" at any time to return to the previous menu%n%n", EXIT_SIGNAL));
 
 			String name = null;
 			while (true) {
@@ -312,12 +316,13 @@ public class AccountManager {
 				name = io.readLine();
 				if (name.equals(EXIT_SIGNAL)) {
 					return false;
-				} else if (getAccount(name) == null) {
-					LOGGER.warning("Unrecognised account, try again...");
-				} else {
+				} else if (getAccount(name) != null) {
 					break;
+				} else {
+					LOGGER.warning("Unrecognised account, try again...");
+					io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+							EXIT_SIGNAL));
 				}
-				io.printf("Type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL);
 			}
 			final Account account = getAccount(name);
 
@@ -327,10 +332,12 @@ public class AccountManager {
 				password = String.valueOf(io.readPassword());
 				if (password.equals(EXIT_SIGNAL)) {
 					return false;
-				} else if (!password.equals(account.getPassword())) {
-					LOGGER.warning("Invalid password, try again...");
-				} else {
+				} else if (password.equals(account.getPassword())) {
 					break;
+				} else {
+					LOGGER.warning("Invalid password, try again...");
+					io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+							EXIT_SIGNAL));
 				}
 			}
 
@@ -349,7 +356,7 @@ public class AccountManager {
 
 		try {
 			io.printf("%n*** RESET PASSWORD ***%n");
-			io.printf(String.format("type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL));
+			io.printf(String.format("Type \"%s\" at any time to return to the previous menu%n%n", EXIT_SIGNAL));
 
 			String name = null;
 			while (true) {
@@ -357,10 +364,12 @@ public class AccountManager {
 				name = io.readLine();
 				if (name.equals(EXIT_SIGNAL)) {
 					return false;
-				} else if (getAccount(name) == null) {
-					LOGGER.warning("Unrecognised account, try again...");
-				} else {
+				} else if (getAccount(name) != null) {
 					break;
+				} else {
+					LOGGER.warning("Unrecognised account, try again...");
+					io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+							EXIT_SIGNAL));
 				}
 			}
 
@@ -372,6 +381,9 @@ public class AccountManager {
 					return false;
 				} else if (validatePassword(password)) {
 					break;
+				} else {
+					io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+							EXIT_SIGNAL));
 				}
 			}
 
@@ -392,7 +404,7 @@ public class AccountManager {
 
 		try {
 			io.printf("%n*** CREATE ACCOUNT ***%n");
-			io.printf(String.format("type \"%s\" to return to the previous menu%n%n", EXIT_SIGNAL));
+			io.printf(String.format("Type \"%s\" at any time to return to the previous menu%n%n", EXIT_SIGNAL));
 
 			String name = null;
 			while (true) {
@@ -402,6 +414,9 @@ public class AccountManager {
 					return false;
 				} else if (validateName(name)) {
 					break;
+				} else {
+					io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+							EXIT_SIGNAL));
 				}
 			}
 
@@ -413,6 +428,9 @@ public class AccountManager {
 					return false;
 				} else if (validateEmail(email)) {
 					break;
+				} else {
+					io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+							EXIT_SIGNAL));
 				}
 			}
 
@@ -424,6 +442,9 @@ public class AccountManager {
 					return false;
 				} else if (validatePhone(phone)) {
 					break;
+				} else {
+					io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+							EXIT_SIGNAL));
 				}
 			}
 
@@ -435,6 +456,9 @@ public class AccountManager {
 					return false;
 				} else if (validatePassword(password)) {
 					break;
+				} else {
+					io.printf(String.format("Reminder - you can type \"%s\" to return to the previous menu%n%n",
+							EXIT_SIGNAL));
 				}
 			}
 
